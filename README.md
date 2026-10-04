@@ -27,9 +27,9 @@ Requisitos: Node 22+, pnpm 10 y Docker.
 ```bash
 pnpm install
 pnpm cms:up                          # Directus en http://localhost:8055 (admin@korokotico.com / korokotico)
-cp apps/cms/.env.example apps/cms/.env   # ajusta ADMIN_EMAIL, ADMIN_PASSWORD y WEBSITE_TOKEN
-pnpm cms:seed                        # crea el esquema, permisos y el contenido inicial
-cp apps/web/.env.example apps/web/.env   # DIRECTUS_TOKEN = el mismo WEBSITE_TOKEN
+cp apps/cms/.env.example apps/cms/.env   # ya trae las credenciales del docker-compose
+pnpm cms:seed                        # crea el esquema, permisos, el usuario "Sitio web" y el contenido inicial
+cp apps/web/.env.example apps/web/.env   # DIRECTUS_TOKEN debe ser igual a WEBSITE_TOKEN
 pnpm dev                             # web en http://localhost:5173
 ```
 
@@ -37,6 +37,9 @@ pnpm dev                             # web en http://localhost:5173
 Con `pnpm --filter cms seed -- --force-content` borra y vuelve a cargar el contenido inicial.
 
 `docker compose up --build` levanta las dos apps como en producción (web en http://localhost:3000).
+
+Si la web muestra «El CMS rechazó DIRECTUS_TOKEN», el token de `apps/web/.env` no coincide con el `WEBSITE_TOKEN`
+que usaste en el seed (o el seed no terminó). Iguálalos, corre `pnpm cms:seed` otra vez y reinicia `pnpm dev`.
 
 ## SEO
 

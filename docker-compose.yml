@@ -29,7 +29,7 @@ services:
     environment:
       DIRECTUS_URL: http://cms:8055
       DIRECTUS_PUBLIC_URL: http://localhost:8055
-      DIRECTUS_TOKEN: ${WEBSITE_TOKEN:-dev-website-token}
+      DIRECTUS_TOKEN: ${WEBSITE_TOKEN:-korokotico-dev-token}
       SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
       SITE_URL: http://localhost:3000
     depends_on:

@@ -56,6 +56,12 @@ export async function directus<T>(
   if (!res.ok) {
     const text = await res.text();
     console.error(`[directus] ${method} ${path} → ${res.status} ${text}`);
+    if (res.status === 401 && text.includes("INVALID_CREDENTIALS")) {
+      throw data(
+        "El CMS rechazó DIRECTUS_TOKEN. Usa en apps/web/.env el mismo valor que WEBSITE_TOKEN y vuelve a correr `pnpm cms:seed`.",
+        { status: 503 },
+      );
+    }
     throw new DirectusError(res.status, text);
   }
   if (res.status === 204) return undefined as T;
