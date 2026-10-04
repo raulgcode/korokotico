@@ -1,0 +1,244 @@
+// Prepara Directus para Korokotico:
+//   1. crea colecciones, campos y relaciones (idempotente)
+//   2. configura permisos (lectura pública + usuario "Sitio web" con token)
+//   3. carga el contenido inicial si todavía no hay páginas
+//
+// Uso:  DIRECTUS_URL=... ADMIN_EMAIL=... ADMIN_PASSWORD=... WEBSITE_TOKEN=... pnpm cms:seed
+//       Agrega --force-content para volver a cargar el contenido (borra páginas, menús y colecciones).
+
+import { readFile } from "node:fs/promises";
+import { COLLECTIONS, RELATIONS, FILE_RELATIONS, PUBLIC_READ } from "./schema.mjs";
+import * as content from "./content.mjs";
+import { symbolSvg, logoSvg, collectionSvgs } from "./assets.mjs";
+
+const URL_ = (process.env.DIRECTUS_URL ?? "http://localhost:8055").replace(/\/$/, "");
+const SITE_URL = (process.env.SITE_URL ?? "http://localhost:5173").replace(/\/$/, "");
+const { ADMIN_EMAIL, ADMIN_PASSWORD, WEBSITE_TOKEN } = process.env;
+const FORCE = process.argv.includes("--force-content");
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !WEBSITE_TOKEN) {
+  console.error("Faltan variables: ADMIN_EMAIL, ADMIN_PASSWORD y WEBSITE_TOKEN son obligatorias.");
+  process.exit(1);
+}
+
+let token;
+
+async function api(method, path, body, { allow404 = false } = {}) {
+  const isForm = body instanceof FormData;
+  const res = await fetch(`${URL_}${path}`, {
+    method,
+    headers: {
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(body && !isForm ? { "content-type": "application/json" } : {}),
+    },
+    body: body ? (isForm ? body : JSON.stringify(body)) : undefined,
+  });
+  if (allow404 && (res.status === 404 || res.status === 403)) return null;
+  const text = await res.text();
+  const json = text ? JSON.parse(text) : {};
+  if (!res.ok) {
+    throw new Error(`${method} ${path} → ${res.status}: ${JSON.stringify(json.errors ?? json)}`);
+  }
+  return json.data;
+}
+
+const log = (...a) => console.log("•", ...a);
+
+async function login() {
+  const data = await api("POST", "/auth/login", { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  token = data.access_token;
+}
+
+async function ensureSchema() {
+  const existing = new Set((await api("GET", "/collections?limit=-1")).map((c) => c.collection));
+
+  for (const c of COLLECTIONS) {
+    const meta = {
+      icon: c.icon,
+      note: null,
+      hidden: c.hidden ?? false,
+      singleton: c.singleton ?? false,
+      group: c.group ?? null,
+      sort: c.sort ?? null,
+      collapse: c.collapse ?? "open",
+      display_template: c.template ?? null,
+      sort_field: c.sortField ?? null,
+      archive_field: c.archive ? "status" : null,
+      archive_value: c.archive ? "draft" : null,
+      unarchive_value: c.archive ? "published" : null,
+      translations: [{ language: "es-ES", translation: c.label, singular: c.label, plural: c.label }],
+    };
+
+    if (!existing.has(c.collection)) {
+      log("Creando colección", c.collection);
+      await api("POST", "/collections", {
+        collection: c.collection,
+        meta,
+        schema: c.folder ? null : {},
+        fields: c.folder ? undefined : c.fields,
+      });
+      continue;
+    }
+
+    await api("PATCH", `/collections/${c.collection}`, { meta });
+    if (c.folder) continue;
+
+    const fields = new Set((await api("GET", `/fields/${c.collection}`)).map((fl) => fl.field));
+    for (const fl of c.fields) {
+      if (fields.has(fl.field)) {
+        if (fl.field !== "id") await api("PATCH", `/fields/${c.collection}/${fl.field}`, { meta: fl.meta });
+      } else {
+        log("Agregando campo", `${c.collection}.${fl.field}`);
+        await api("POST", `/fields/${c.collection}`, fl);
+      }
+    }
+  }
+
+  for (const r of [...RELATIONS, ...FILE_RELATIONS]) {
+    const found = await api("GET", `/relations/${r.collection}/${r.field}`, undefined, { allow404: true });
+    if (!found) {
+      log("Creando relación", `${r.collection}.${r.field}`);
+      await api("POST", "/relations", r);
+    } else if (r.meta) {
+      await api("PATCH", `/relations/${r.collection}/${r.field}`, { meta: r.meta });
+    }
+  }
+}
+
+async function ensureFolder(name) {
+  const found = await api("GET", `/folders?filter[name][_eq]=${encodeURIComponent(name)}`);
+  if (found.length) return found[0].id;
+  return (await api("POST", "/folders", { name })).id;
+}
+
+async function ensurePermission(policy, collection, action, extra = {}) {
+  const found = await api(
+    "GET",
+    `/permissions?filter[policy][_eq]=${policy}&filter[collection][_eq]=${collection}&filter[action][_eq]=${action}`,
+  );
+  const body = { policy, collection, action, fields: ["*"], permissions: null, validation: null, ...extra };
+  if (found.length) await api("PATCH", `/permissions/${found[0].id}`, body);
+  else await api("POST", "/permissions", body);
+}
+
+async function ensurePermissions() {
+  const policies = await api("GET", "/policies?limit=-1");
+  const publicPolicy = policies.find((p) => p.name === "$t:public_label");
+  if (!publicPolicy) throw new Error("No se encontró la política pública");
+
+  // Directus sin licencia no permite reglas con filtros: la web filtra por
+  // status=published y sirve las imágenes a través de su propia ruta /assets,
+  // así las referencias privadas de los clientes nunca quedan públicas.
+  const readRules = (policy) => PUBLIC_READ.map((collection) => ensurePermission(policy, collection, "read"));
+
+  log("Permisos públicos");
+  await Promise.all(readRules(publicPolicy.id));
+
+  // Política y usuario para la web (guarda solicitudes)
+  let website = policies.find((p) => p.name === "Sitio web");
+  if (!website) {
+    website = await api("POST", "/policies", {
+      name: "Sitio web",
+      icon: "language",
+      description: "Usado por la web para leer contenido y guardar solicitudes",
+      app_access: false,
+      admin_access: false,
+    });
+  }
+  log("Permisos del usuario Sitio web");
+  await Promise.all([
+    ...readRules(website.id),
+    ...["orders", "request_items", "request_items_files"].flatMap((c) =>
+      ["create", "read", "update"].map((a) => ensurePermission(website.id, c, a)),
+    ),
+    ensurePermission(website.id, "directus_files", "create"),
+    ensurePermission(website.id, "directus_files", "read"),
+    ensurePermission(website.id, "directus_folders", "read"),
+  ]);
+
+  let role = (await api("GET", "/roles?filter[name][_eq]=Sitio%20web"))[0];
+  if (!role) {
+    role = await api("POST", "/roles", { name: "Sitio web", icon: "language", policies: { create: [{ policy: website.id }] } });
+  }
+  const email = "sitio-web@korokotico.com";
+  const user = (await api("GET", `/users?filter[email][_eq]=${encodeURIComponent(email)}`))[0];
+  if (user) await api("PATCH", `/users/${user.id}`, { token: WEBSITE_TOKEN, role: role.id });
+  else await api("POST", "/users", { email, first_name: "Sitio", last_name: "web", role: role.id, token: WEBSITE_TOKEN, status: "active" });
+}
+
+async function upload(name, svg, folder, type = "image/svg+xml") {
+  const existing = await api("GET", `/files?filter[filename_download][_eq]=${encodeURIComponent(name)}`);
+  if (existing.length) return existing[0].id;
+  const form = new FormData();
+  form.append("folder", folder);
+  form.append("title", name.replace(/\.\w+$/, ""));
+  form.append("file", new Blob([svg], { type }), name);
+  return (await api("POST", "/files", form)).id;
+}
+
+async function seedContent(folders) {
+  const pageCount = (await api("GET", "/items/pages?aggregate[count]=*"))[0].count;
+  if (Number(pageCount) > 0 && !FORCE) {
+    log("Ya hay contenido; no se toca (usa --force-content para recargarlo)");
+    return;
+  }
+
+  if (FORCE) {
+    log("Borrando contenido anterior");
+    for (const c of ["pages", "menus", "catalog_collections", "packages", "addons", "shipping_zones"]) {
+      const ids = (await api("GET", `/items/${c}?fields=id&limit=-1`)).map((i) => i.id);
+      if (ids.length) await api("DELETE", `/items/${c}`, ids);
+    }
+  }
+
+  log("Subiendo imágenes");
+  const files = {
+    logo: await upload("korokotico-logo.svg", logoSvg, folders.brand),
+    symbol: await upload("korokotico-simbolo.svg", symbolSvg, folders.brand),
+    og: await upload("korokotico-og.png", await readFile(new URL("./og.png", import.meta.url)), folders.brand, "image/png"),
+  };
+  for (const [slug, svg] of Object.entries(collectionSvgs)) {
+    files[`collection_${slug}`] = await upload(`coleccion-${slug}.svg`, svg, folders.collections);
+  }
+
+  log("Ajustes, menús, colecciones y precios");
+  await api("PATCH", "/items/site_settings", content.settings(files, URL_, SITE_URL));
+  await api("POST", "/items/menus", content.menus(URL_));
+  await api("POST", "/items/catalog_collections", content.collections(files));
+  await api("POST", "/items/packages", content.packages);
+  await api("POST", "/items/addons", content.addons);
+  await api("POST", "/items/shipping_zones", content.shippingZones);
+
+  log("Páginas");
+  for (const page of content.pages(files)) {
+    await api("POST", "/items/pages", {
+      status: "published",
+      ...page,
+      blocks: page.blocks.map((blk, i) => ({ collection: blk.collection, item: blk.item, sort: i + 1 })),
+    });
+  }
+}
+
+async function projectSettings() {
+  await api("PATCH", "/settings", {
+    project_name: "Korokotico",
+    project_color: "#C8643B",
+    default_language: "es-ES",
+    project_descriptor: "Panel de contenido",
+  });
+  const me = await api("GET", "/users/me?fields=id");
+  await api("PATCH", `/users/${me.id}`, { language: "es-ES" });
+}
+
+await login();
+log(`Conectado a ${URL_}`);
+await ensureSchema();
+const folders = {
+  brand: await ensureFolder("Marca"),
+  collections: await ensureFolder("Colecciones"),
+  references: await ensureFolder("Referencias de clientes"),
+};
+await ensurePermissions();
+await projectSettings();
+await seedContent(folders);
+log("Listo ✔");

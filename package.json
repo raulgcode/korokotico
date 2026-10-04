@@ -1,0 +1,18 @@
+{
+  "name": "korokotico",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "typecheck": "pnpm --filter web typecheck",
+    "cms:up": "docker compose up -d cms",
+    "cms:down": "docker compose down",
+    "cms:seed": "pnpm --filter cms seed",
+    "deploy:cms": "fly deploy apps/cms --config apps/cms/fly.toml",
+    "deploy:web": "fly deploy . --config apps/web/fly.toml --dockerfile apps/web/Dockerfile"
+  }
+}

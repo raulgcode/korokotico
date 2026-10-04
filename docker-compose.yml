@@ -1,0 +1,36 @@
+# Desarrollo local: `docker compose up` levanta el CMS (http://localhost:8055)
+# y la web (http://localhost:3000). Para la web en modo dev usa `pnpm dev`.
+services:
+  cms:
+    build: ./apps/cms
+    ports:
+      - "8055:8055"
+    environment:
+      SECRET: ${CMS_SECRET:-dev-secret-cambiar}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@korokotico.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-korokotico}
+      PUBLIC_URL: http://localhost:8055
+      DEFAULT_LANGUAGE: es-ES
+      CORS_ENABLED: "true"
+      CORS_ORIGIN: "true"
+      PM2_INSTANCES: "1"
+      TELEMETRY: "false"
+      WEBSOCKETS_ENABLED: "false"
+      FILES_MAX_UPLOAD_SIZE: 20mb
+    volumes:
+      - ./apps/cms/data:/directus/data
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DIRECTUS_URL: http://cms:8055
+      DIRECTUS_PUBLIC_URL: http://localhost:8055
+      DIRECTUS_TOKEN: ${WEBSITE_TOKEN:-dev-website-token}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret}
+      SITE_URL: http://localhost:3000
+    depends_on:
+      - cms

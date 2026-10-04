@@ -1,0 +1,33 @@
+# Web de Korokotico en Fly.io. Despliegue (desde la raíz del monorepo):
+#   fly apps create korokotico-web
+#   fly secrets set --app korokotico-web DIRECTUS_TOKEN=... SESSION_SECRET=...
+#   pnpm deploy:web
+app = "korokotico-web"
+primary_region = "mia"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  DIRECTUS_URL = "https://korokotico-cms.fly.dev"
+  SITE_URL = "https://korokotico-web.fly.dev"
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # Se apaga cuando no hay visitas y arranca sola en la siguiente
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/healthz"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

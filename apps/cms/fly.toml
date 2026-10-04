@@ -1,0 +1,46 @@
+# Directus en Fly.io con SQLite sobre un volumen (sin base de datos de pago).
+# Primer despliegue (desde la raíz del monorepo):
+#   fly apps create korokotico-cms
+#   fly volumes create cms_data --app korokotico-cms --region mia --size 1
+#   fly secrets set --app korokotico-cms SECRET=... ADMIN_EMAIL=... ADMIN_PASSWORD=...
+#   pnpm deploy:cms
+app = "korokotico-cms"
+primary_region = "mia"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PUBLIC_URL = "https://korokotico-cms.fly.dev"
+  DEFAULT_LANGUAGE = "es-ES"
+  CORS_ENABLED = "true"
+  CORS_ORIGIN = "true"
+  # SQLite no admite varias instancias escribiendo a la vez
+  PM2_INSTANCES = "1"
+  CACHE_ENABLED = "false"
+  WEBSOCKETS_ENABLED = "false"
+  TELEMETRY = "false"
+  FILES_MAX_UPLOAD_SIZE = "20mb"
+
+[mounts]
+  source = "cms_data"
+  destination = "/directus/data"
+
+[http_service]
+  internal_port = 8055
+  force_https = true
+  # La máquina se apaga sola cuando no hay tráfico: casi no cuesta nada
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "30s"
+    method = "GET"
+    path = "/server/ping"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

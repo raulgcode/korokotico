@@ -1,0 +1,10 @@
+node_modules
+build
+.react-router
+.env
+**/node_modules
+**/build
+**/.react-router
+**/.env
+apps/cms/data
+.git

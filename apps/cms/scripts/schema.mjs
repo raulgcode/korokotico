@@ -1,0 +1,593 @@
+// Modelo de datos de Korokotico en Directus.
+// Cada colección define sus campos con etiquetas en español para el panel.
+
+const es = (translation) => [{ language: "es-ES", translation }];
+
+const id = () => ({
+  field: "id",
+  type: "integer",
+  meta: { hidden: true, readonly: true, interface: "input" },
+  schema: { is_primary_key: true, has_auto_increment: true },
+});
+
+const base = (field, type, label, meta = {}, schema = {}) => ({
+  field,
+  type,
+  meta: { translations: es(label), width: "full", ...meta },
+  schema: { ...schema },
+});
+
+export const f = {
+  string: (field, label, meta = {}, schema = {}) =>
+    base(field, "string", label, { interface: "input", ...meta }, schema),
+  text: (field, label, meta = {}) =>
+    base(field, "text", label, { interface: "input-multiline", ...meta }),
+  html: (field, label, meta = {}) =>
+    base(field, "text", label, {
+      interface: "input-rich-text-html",
+      options: {
+        toolbar: ["bold", "italic", "h2", "h3", "numlist", "bullist", "link", "removeformat", "code"],
+      },
+      ...meta,
+    }),
+  integer: (field, label, meta = {}, schema = {}) =>
+    base(field, "integer", label, { interface: "input", ...meta }, schema),
+  boolean: (field, label, def = false, meta = {}) =>
+    base(field, "boolean", label, { interface: "boolean", special: ["cast-boolean"], ...meta }, { default_value: def }),
+  image: (field, label, meta = {}) =>
+    base(field, "uuid", label, { interface: "file-image", special: ["file"], display: "image", ...meta }),
+  select: (field, label, choices, def, meta = {}) =>
+    base(
+      field,
+      "string",
+      label,
+      {
+        interface: "select-dropdown",
+        display: "labels",
+        options: { choices: choices.map(([value, text]) => ({ value, text })) },
+        ...meta,
+      },
+      { default_value: def },
+    ),
+  m2o: (field, label, template, meta = {}) =>
+    base(field, "integer", label, {
+      interface: "select-dropdown-m2o",
+      special: ["m2o"],
+      options: template ? { template } : {},
+      display: "related-values",
+      display_options: template ? { template } : {},
+      ...meta,
+    }),
+  sort: () => ({ field: "sort", type: "integer", meta: { hidden: true, interface: "input" }, schema: {} }),
+  status: () =>
+    base(
+      "status",
+      "string",
+      "Estado",
+      {
+        interface: "select-dropdown",
+        display: "labels",
+        width: "half",
+        options: {
+          choices: [
+            { value: "published", text: "Publicado" },
+            { value: "draft", text: "Borrador" },
+          ],
+        },
+        display_options: {
+          choices: [
+            { value: "published", text: "Publicado", foreground: "#FFFFFF", background: "#2F7D4F" },
+            { value: "draft", text: "Borrador", foreground: "#3B2A22", background: "#EADFCF" },
+          ],
+          showAsDot: true,
+        },
+      },
+      { default_value: "published", is_nullable: false },
+    ),
+  repeater: (field, label, fields, template) =>
+    base(field, "json", label, {
+      interface: "list",
+      special: ["cast-json"],
+      options: {
+        template,
+        addLabel: "Agregar",
+        fields: fields.map(([key, name, kind = "input"]) => ({
+          field: key,
+          name,
+          type: kind === "input" ? "string" : "text",
+          meta: { field: key, interface: kind, width: "full", type: kind === "input" ? "string" : "text" },
+        })),
+      },
+    }),
+  alias: (field, label, special, iface, meta = {}) => ({
+    field,
+    type: "alias",
+    meta: { translations: es(label), special, interface: iface, width: "full", ...meta },
+  }),
+  divider: (field, title) => ({
+    field,
+    type: "alias",
+    meta: { special: ["alias", "no-data"], interface: "presentation-divider", options: { title }, width: "full" },
+  }),
+  json: (field, label, meta = {}) => base(field, "json", label, { interface: "input-code", special: ["cast-json"], options: { language: "json" }, ...meta }),
+  timestamp: (field, label, special) =>
+    base(field, "timestamp", label, { interface: "datetime", special: [special], readonly: true, hidden: false, width: "half", display: "datetime", display_options: { relative: true } }),
+};
+
+const half = { width: "half" };
+
+const linkFields = (prefix, label) => [
+  f.string(`${prefix}_label`, `${label}: texto`, half),
+  f.string(`${prefix}_url`, `${label}: enlace`, { ...half, note: "Ruta interna (/colecciones) o URL completa" }),
+];
+
+const seoFields = () => [
+  f.divider("seo_divider", "SEO"),
+  f.string("seo_title", "Título SEO", { note: "Aparece en Google y en la pestaña. Si está vacío se usa el título." }),
+  f.text("seo_description", "Descripción SEO", { note: "Ideal entre 120 y 160 caracteres." }),
+  f.image("og_image", "Imagen para compartir (Open Graph)", { note: "1200 × 630 px recomendado." }),
+];
+
+// Bloques del constructor de páginas
+export const BLOCKS = [
+  {
+    collection: "block_hero",
+    label: "Portada (hero)",
+    icon: "view_carousel",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("eyebrow", "Antetítulo", { note: "Texto pequeño en mayúsculas sobre el título" }),
+      f.string("kicker", "Frase destacada"),
+      f.string("title", "Título", { required: true }),
+      f.text("description", "Descripción"),
+      ...linkFields("primary", "Botón principal"),
+      ...linkFields("secondary", "Botón secundario"),
+      f.image("image", "Imagen"),
+      f.string("image_caption", "Texto bajo la imagen"),
+      f.repeater("features", "Características", [["text", "Texto"]], "{{text}}"),
+    ],
+  },
+  {
+    collection: "block_page_header",
+    label: "Encabezado de página",
+    icon: "title",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("eyebrow", "Antetítulo"),
+      f.string("title", "Título", { required: true }),
+      f.text("subtitle", "Subtítulo"),
+      f.image("image", "Imagen (opcional)"),
+    ],
+  },
+  {
+    collection: "block_collections",
+    label: "Colecciones",
+    icon: "category",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("eyebrow", "Antetítulo"),
+      f.string("title", "Título"),
+      f.text("subtitle", "Subtítulo"),
+      f.select("layout", "Diseño", [["preview", "Vista previa (tarjetas destacadas)"], ["full", "Listado completo numerado"]], "full", half),
+      f.integer("limit", "Cantidad máxima", { ...half, note: "Vacío = todas" }),
+      ...linkFields("button", "Botón"),
+    ],
+  },
+  {
+    collection: "block_steps",
+    label: "Pasos del proceso",
+    icon: "format_list_numbered",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("eyebrow", "Antetítulo"),
+      f.string("title", "Título"),
+      f.text("subtitle", "Subtítulo"),
+      f.select("layout", "Diseño", [["compact", "Compacto (3 columnas)"], ["detailed", "Detallado (tarjetas grandes)"]], "compact"),
+      f.repeater(
+        "steps",
+        "Pasos",
+        [
+          ["title", "Título"],
+          ["description", "Descripción (separa párrafos con una línea en blanco)", "input-multiline"],
+        ],
+        "{{title}}",
+      ),
+      f.string("note_title", "Nota: título"),
+      f.text("note", "Nota: texto"),
+      ...linkFields("button", "Botón"),
+    ],
+  },
+  {
+    collection: "block_story",
+    label: "Historia con imagen",
+    icon: "auto_stories",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("eyebrow", "Antetítulo"),
+      f.string("title", "Título"),
+      f.html("content", "Contenido"),
+      f.image("image", "Imagen"),
+      ...linkFields("button", "Botón"),
+    ],
+  },
+  {
+    collection: "block_rich_text",
+    label: "Texto",
+    icon: "notes",
+    template: "{{title}}",
+    fields: [id(), f.string("title", "Título (opcional)"), f.html("content", "Contenido")],
+  },
+  {
+    collection: "block_cta",
+    label: "Llamado a la acción",
+    icon: "campaign",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("eyebrow", "Antetítulo"),
+      f.string("title", "Título"),
+      f.html("content", "Contenido"),
+      f.text("fine_print", "Letra pequeña"),
+      ...linkFields("button", "Botón"),
+      f.select("tone", "Estilo", [["soft", "Suave"], ["strong", "Destacado"]], "soft"),
+    ],
+  },
+  {
+    collection: "block_faq",
+    label: "Preguntas frecuentes",
+    icon: "quiz",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("title", "Título (opcional)"),
+      f.repeater(
+        "items",
+        "Preguntas",
+        [
+          ["question", "Pregunta"],
+          ["answer", "Respuesta", "input-multiline"],
+        ],
+        "{{question}}",
+      ),
+    ],
+  },
+  {
+    collection: "block_contact",
+    label: "Contacto",
+    icon: "forum",
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("title", "Título"),
+      f.text("content", "Texto"),
+      f.string("whatsapp_label", "Texto del botón de WhatsApp", half),
+      f.string("email_label", "Texto del botón de correo", half),
+      f.string("whatsapp_pending", "Mensaje si falta el WhatsApp", { note: "Se muestra si no hay número en Ajustes del sitio" }),
+      f.string("email_pending", "Mensaje si falta el correo"),
+    ],
+  },
+  {
+    collection: "block_create_form",
+    label: "Formulario: crear personaje",
+    icon: "edit_note",
+    template: "{{step1_title}}",
+    fields: [
+      id(),
+      f.divider("heading_divider", "Encabezado (se usa en la página de cada colección)"),
+      f.boolean("show_heading", "Mostrar encabezado en esta página", false),
+      f.string("eyebrow", "Antetítulo"),
+      f.string("title", "Título"),
+      f.text("subtitle", "Subtítulo"),
+      f.divider("steps_divider", "Pasos del formulario"),
+      f.string("step1_title", "Paso 1: título"),
+      f.string("step2_title", "Paso 2: título"),
+      f.string("step3_title", "Paso 3: título"),
+      f.string("addons_title", "Complementos: título"),
+      f.string("references_note", "Nota de referencias"),
+      f.divider("summary_divider", "Resumen"),
+      f.string("units_label", "Texto de unidades"),
+      f.text("summary_note", "Nota del resumen"),
+      f.string("submit_label", "Texto del botón"),
+      f.string("size_note", "Nota de tamaño"),
+      ...linkFields("process_link", "Enlace al proceso"),
+    ],
+  },
+];
+
+export const BLOCK_COLLECTIONS = BLOCKS.map((b) => b.collection);
+
+export const COLLECTIONS = [
+  // Carpetas para ordenar el panel
+  { collection: "folder_content", folder: true, label: "Sitio web", icon: "web", sort: 1 },
+  { collection: "folder_blocks", folder: true, label: "Bloques de página", icon: "widgets", sort: 2, collapse: "closed" },
+  { collection: "folder_shop", folder: true, label: "Pedidos", icon: "shopping_bag", sort: 3 },
+
+  {
+    collection: "site_settings",
+    label: "Ajustes del sitio",
+    icon: "settings",
+    singleton: true,
+    group: "folder_content",
+    sort: 1,
+    fields: [
+      id(),
+      f.string("site_name", "Nombre del sitio", half),
+      f.string("site_url", "URL pública del sitio", { ...half, note: "Ej: https://korokotico.com (para SEO y sitemap)" }),
+      f.image("logo", "Logo", half),
+      f.image("symbol", "Símbolo / ícono", half),
+      f.divider("topbar_divider", "Barra superior"),
+      f.string("topbar_text", "Texto"),
+      ...linkFields("topbar_link", "Enlace"),
+      f.divider("footer_divider", "Pie de página"),
+      f.string("footer_text", "Texto del pie"),
+      f.divider("contact_divider", "Contacto"),
+      f.string("whatsapp_number", "Número de WhatsApp", { ...half, note: "Con código de país, solo números. Ej: 50688887777" }),
+      f.string("contact_email", "Correo de contacto", half),
+      f.string("instagram_url", "Instagram", half),
+      f.string("facebook_url", "Facebook", half),
+      f.divider("seo_divider", "SEO por defecto"),
+      f.string("seo_title", "Título por defecto"),
+      f.text("seo_description", "Descripción por defecto"),
+      f.image("og_image", "Imagen para compartir por defecto"),
+      f.string("twitter_handle", "Usuario de X / Twitter", half),
+      f.string("locale", "Idioma (locale)", { ...half, note: "es_CR" }),
+    ],
+  },
+  {
+    collection: "menus",
+    label: "Menús",
+    icon: "menu",
+    group: "folder_content",
+    sort: 2,
+    template: "{{title}}",
+    fields: [
+      id(),
+      f.string("key", "Clave", { ...half, note: "header o footer", required: true }, { is_unique: true }),
+      f.string("title", "Nombre", half),
+      f.alias("items", "Enlaces", ["o2m"], "list-o2m", { options: { template: "{{label}} → {{url}}", enableSelect: false } }),
+    ],
+  },
+  {
+    collection: "menu_items",
+    label: "Enlaces de menú",
+    icon: "link",
+    group: "folder_content",
+    hidden: true,
+    sort: 3,
+    sortField: "sort",
+    template: "{{label}}",
+    fields: [
+      id(),
+      f.sort(),
+      f.m2o("menu", "Menú", "{{title}}", { hidden: true }),
+      f.string("label", "Texto", { ...half, required: true }),
+      f.string("url", "Enlace", { ...half, required: true, note: "Ruta interna (/historia) o URL completa" }),
+      f.boolean("new_tab", "Abrir en otra pestaña", false),
+    ],
+  },
+  {
+    collection: "pages",
+    label: "Páginas",
+    icon: "article",
+    group: "folder_content",
+    sort: 4,
+    template: "{{title}} · /{{slug}}",
+    archive: true,
+    fields: [
+      id(),
+      f.status(),
+      f.string("slug", "Ruta (slug)", { ...half, required: true, note: "Sin barra inicial. La portada usa «inicio»." }, { is_unique: true }),
+      f.string("title", "Título", { required: true }),
+      f.alias("blocks", "Secciones", ["m2a"], "list-m2a", { options: { enableSelect: false } }),
+      ...seoFields(),
+      f.boolean("no_index", "Ocultar de buscadores (noindex)", false),
+      f.timestamp("date_updated", "Actualizado", "date-updated"),
+    ],
+  },
+  {
+    collection: "pages_blocks",
+    label: "Secciones de página",
+    icon: "import_export",
+    hidden: true,
+    sortField: "sort",
+    fields: [
+      id(),
+      { field: "pages_id", type: "integer", meta: { hidden: true }, schema: {} },
+      { field: "item", type: "string", meta: { hidden: true }, schema: {} },
+      { field: "collection", type: "string", meta: { hidden: true }, schema: {} },
+      f.sort(),
+    ],
+  },
+  ...BLOCKS.map((b, i) => ({
+    collection: b.collection,
+    label: b.label,
+    icon: b.icon,
+    group: "folder_blocks",
+    sort: i + 1,
+    template: b.template,
+    fields: b.fields,
+  })),
+  {
+    collection: "catalog_collections",
+    label: "Colecciones",
+    icon: "category",
+    group: "folder_content",
+    sort: 5,
+    sortField: "sort",
+    template: "{{number}} · {{title}}",
+    archive: true,
+    fields: [
+      id(),
+      f.status(),
+      f.sort(),
+      f.string("number", "Número", { ...half, note: "Ej: 01" }),
+      f.string("slug", "Ruta (slug)", { ...half, required: true, note: "Se publica en /colecciones/<slug>" }, { is_unique: true }),
+      f.string("title", "Nombre", { required: true }),
+      f.string("category", "Categoría", { note: "Ej: Imagina algo extraordinario" }),
+      f.text("description", "Descripción corta"),
+      f.html("body", "Contenido extra (opcional)"),
+      f.image("image", "Imagen"),
+      f.string("accent_color", "Color de acento", { ...half, interface: "select-color" }),
+      f.boolean("featured", "Destacar en la portada", false, half),
+      ...seoFields(),
+    ],
+  },
+  {
+    collection: "packages",
+    label: "Paquetes",
+    icon: "redeem",
+    group: "folder_shop",
+    sort: 1,
+    sortField: "sort",
+    template: "{{name}}",
+    fields: [
+      id(),
+      f.sort(),
+      f.string("name", "Nombre", { required: true }),
+      f.text("description", "Descripción"),
+      f.integer("price", "Precio (₡)", { ...half, required: true }),
+      f.boolean("includes_addons", "Incluye todos los complementos", false, half),
+    ],
+  },
+  {
+    collection: "addons",
+    label: "Complementos",
+    icon: "add_circle",
+    group: "folder_shop",
+    sort: 2,
+    sortField: "sort",
+    template: "{{name}}",
+    fields: [id(), f.sort(), f.string("name", "Nombre", { required: true, ...half }), f.integer("price", "Precio (₡)", { required: true, ...half })],
+  },
+  {
+    collection: "shipping_zones",
+    label: "Zonas de envío",
+    icon: "local_shipping",
+    group: "folder_shop",
+    sort: 3,
+    sortField: "sort",
+    template: "{{name}}",
+    fields: [id(), f.sort(), f.string("name", "Nombre", { required: true, ...half }), f.integer("price", "Precio (₡)", { required: true, ...half })],
+  },
+  {
+    collection: "orders",
+    label: "Solicitudes",
+    icon: "inbox",
+    group: "folder_shop",
+    sort: 4,
+    template: "{{code}} · {{customer_name}}",
+    sortField: null,
+    fields: [
+      id(),
+      f.select(
+        "status",
+        "Estado",
+        [
+          ["nueva", "Nueva"],
+          ["en_diseno", "En diseño"],
+          ["esperando_pago", "Esperando pago"],
+          ["pagada", "Pago verificado"],
+          ["en_produccion", "En producción"],
+          ["enviada", "Enviada"],
+          ["entregada", "Entregada"],
+          ["cancelada", "Cancelada"],
+        ],
+        "nueva",
+        half,
+      ),
+      f.string("code", "Código", { ...half, readonly: true }),
+      f.string("token", "Token privado", { hidden: true }),
+      f.string("customer_name", "Nombre", half),
+      f.string("email", "Correo", half),
+      f.string("phone", "WhatsApp / teléfono", half),
+      f.m2o("shipping_zone", "Zona de envío", "{{name}}", half),
+      f.text("address", "Dirección de envío"),
+      f.text("notes", "Notas del cliente"),
+      f.integer("subtotal", "Subtotal (₡)", { ...half, readonly: true }),
+      f.integer("shipping", "Envío (₡)", { ...half, readonly: true }),
+      f.integer("total", "Total (₡)", { ...half, readonly: true }),
+      f.alias("items", "Personajes", ["o2m"], "list-o2m", { options: { template: "{{character_name}} · {{collection.title}}", enableCreate: false, enableSelect: false } }),
+      f.text("internal_notes", "Notas internas"),
+      f.timestamp("date_created", "Creada", "date-created"),
+    ],
+  },
+  {
+    collection: "request_items",
+    label: "Personajes solicitados",
+    icon: "toys",
+    group: "folder_shop",
+    sort: 5,
+    template: "{{character_name}}",
+    fields: [
+      id(),
+      f.select("status", "Estado", [["en_carrito", "En carrito"], ["solicitado", "Solicitado"]], "en_carrito", half),
+      f.m2o("order", "Solicitud", "{{code}}", half),
+      f.m2o("collection", "Colección", "{{title}}", half),
+      f.string("character_name", "Nombre del personaje", half),
+      f.string("colors", "Colores favoritos", half),
+      f.string("interests", "Gustos e intereses", half),
+      f.text("idea", "Idea"),
+      f.alias("references", "Referencias", ["files"], "files", { options: { folder: null } }),
+      f.m2o("package", "Paquete", "{{name}}", half),
+      f.json("addons", "Complementos", half),
+      f.integer("units", "Unidades", half),
+      f.integer("unit_price", "Precio unitario (₡)", half),
+      f.integer("subtotal", "Subtotal (₡)", half),
+      f.timestamp("date_created", "Creado", "date-created"),
+    ],
+  },
+  {
+    collection: "request_items_files",
+    label: "Referencias",
+    icon: "attach_file",
+    hidden: true,
+    fields: [
+      id(),
+      { field: "request_items_id", type: "integer", meta: { hidden: true }, schema: {} },
+      { field: "directus_files_id", type: "uuid", meta: { hidden: true }, schema: {} },
+    ],
+  },
+];
+
+export const RELATIONS = [
+  { collection: "menu_items", field: "menu", related_collection: "menus", meta: { one_field: "items", sort_field: "sort" }, schema: { on_delete: "CASCADE" } },
+  { collection: "pages_blocks", field: "pages_id", related_collection: "pages", meta: { one_field: "blocks", junction_field: "item", sort_field: "sort" }, schema: { on_delete: "CASCADE" } },
+  {
+    collection: "pages_blocks",
+    field: "item",
+    related_collection: null,
+    meta: { one_allowed_collections: BLOCK_COLLECTIONS, one_collection_field: "collection", junction_field: "pages_id" },
+  },
+  { collection: "request_items", field: "order", related_collection: "orders", meta: { one_field: "items" }, schema: { on_delete: "SET NULL" } },
+  { collection: "request_items", field: "collection", related_collection: "catalog_collections", schema: { on_delete: "SET NULL" } },
+  { collection: "request_items", field: "package", related_collection: "packages", schema: { on_delete: "SET NULL" } },
+  { collection: "orders", field: "shipping_zone", related_collection: "shipping_zones", schema: { on_delete: "SET NULL" } },
+  { collection: "request_items_files", field: "request_items_id", related_collection: "request_items", meta: { one_field: "references", junction_field: "directus_files_id" }, schema: { on_delete: "CASCADE" } },
+  { collection: "request_items_files", field: "directus_files_id", related_collection: "directus_files", meta: { junction_field: "request_items_id" }, schema: { on_delete: "CASCADE" } },
+];
+
+// Campos de imagen → directus_files
+export const FILE_RELATIONS = COLLECTIONS.flatMap((c) =>
+  (c.fields ?? [])
+    .filter((fl) => fl.type === "uuid" && fl.meta?.special?.includes("file"))
+    .map((fl) => ({ collection: c.collection, field: fl.field, related_collection: "directus_files", schema: { on_delete: "SET NULL" } })),
+);
+
+// Lectura pública (lo que la web muestra sin iniciar sesión)
+export const PUBLIC_READ = [
+  "site_settings",
+  "menus",
+  "menu_items",
+  "pages",
+  "pages_blocks",
+  ...BLOCK_COLLECTIONS,
+  "catalog_collections",
+  "packages",
+  "addons",
+  "shipping_zones",
+];
