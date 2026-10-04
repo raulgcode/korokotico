@@ -23,14 +23,6 @@ const sloth = (size = 400) => `
   <circle cx="280" cy="268" r="14" fill="#E9A48A" opacity="0.6"/>
 </svg>`;
 
-export const symbolSvg = sloth(400);
-
-export const logoSvg = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 160" width="640" height="160">
-  <g transform="translate(4 4) scale(0.38)">${sloth(400).replace(/<\/?svg[^>]*>/g, "")}</g>
-  <text x="168" y="104" font-family="Fraunces, Georgia, serif" font-size="78" font-weight="600" fill="#3B2A22" letter-spacing="-1">korokotico</text>
-</svg>`;
-
 const card = (bg, body) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" width="480" height="480">
   <rect width="480" height="480" fill="${bg}"/>

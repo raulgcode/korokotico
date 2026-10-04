@@ -50,8 +50,10 @@ export const ACTIVE_THEME: ThemeName = "marca"; // o "clasico"
 ```
 
 - `clasico`: crema y terracota (diseño original).
-- `marca`: manual de marca 2026: blanco `#FFFFFF`, azul noche `#01112B`, lima `#C6FF34` y violeta `#7F3AEF`,
-  con el logo y el símbolo del manual (`apps/web/public/themes/marca`).
+- `marca`: manual de marca 2026: blanco `#FFFFFF`, azul noche `#01112B`, lima `#C6FF34` y violeta `#7F3AEF`.
+
+El tema solo define colores y tipografías. El logo, el símbolo (favicon) y las imágenes de cada bloque se cambian en
+Directus: **Ajustes del sitio → Logo / Símbolo**, y en cada página, en la imagen del bloque (Portada, Historia, etc.).
 
 Los colores de cada tema están en `apps/web/app/app.css` (bloques `[data-theme="..."]`). Después de cambiar el tema,
 despliega la web con `pnpm release --web`.

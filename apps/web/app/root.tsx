@@ -43,11 +43,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="theme-color" content={theme.themeColor} />
         <meta name="format-detection" content="telephone=no" />
-        {theme.symbol ? (
-          <link rel="icon" href={theme.symbol} type="image/svg+xml" />
-        ) : (
-          icon && <link rel="icon" href={assetUrl(icon, { width: 64 })} type={icon.type ?? undefined} />
-        )}
+        {icon && <link rel="icon" href={assetUrl(icon, { width: 64 })} type={icon.type ?? undefined} />}
         {icon && <link rel="apple-touch-icon" href={assetUrl(icon, { width: 180 })} />}
         <Meta />
         <Links />

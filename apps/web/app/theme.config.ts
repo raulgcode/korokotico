@@ -6,6 +6,7 @@
  *   - "marca":   colores del manual de marca 2026 (blanco, azul noche, lima y violeta)
  *
  * Los colores de cada tema están en app/app.css, en el bloque [data-theme="..."].
+ * El logo y las imágenes no dependen del tema: se administran en el CMS (Ajustes del sitio).
  */
 export const ACTIVE_THEME: ThemeName = "marca";
 
@@ -17,9 +18,6 @@ type ThemeConfig = {
   fonts: string;
   /** Color de la barra del navegador en móviles */
   themeColor: string;
-  /** Logo y símbolo propios del tema (en /public). Si no hay, se usan los del CMS. */
-  logo?: string;
-  symbol?: string;
 };
 
 export const THEMES = {
@@ -33,8 +31,6 @@ export const THEMES = {
     label: "Marca 2026",
     fonts: "https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=Nunito:wght@400;600;700;800&display=swap",
     themeColor: "#ffffff",
-    logo: "/themes/marca/logo.svg",
-    symbol: "/themes/marca/simbolo.svg",
   },
 } satisfies Record<string, ThemeConfig>;
 

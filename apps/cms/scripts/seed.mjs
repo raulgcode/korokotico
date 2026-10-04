@@ -9,7 +9,7 @@
 import { readFile } from "node:fs/promises";
 import { COLLECTIONS, RELATIONS, FILE_RELATIONS, PUBLIC_READ } from "./schema.mjs";
 import * as content from "./content.mjs";
-import { symbolSvg, logoSvg, collectionSvgs } from "./assets.mjs";
+import { collectionSvgs } from "./assets.mjs";
 
 const URL_ = (process.env.DIRECTUS_URL ?? "http://localhost:8055").replace(/\/$/, "");
 const SITE_URL = (process.env.SITE_URL ?? "http://localhost:5173").replace(/\/$/, "");
@@ -176,6 +176,45 @@ async function upload(name, svg, folder, type = "image/svg+xml") {
   return (await api("POST", "/files", form)).id;
 }
 
+// Logo y símbolo del manual de marca (apps/cms/scripts/brand). Luego se cambian desde el CMS.
+const BRAND = { logo: "korokotico-marca-logo.svg", symbol: "korokotico-marca-simbolo.svg" };
+const brandSvg = (name) => readFile(new URL(`./brand/${name}`, import.meta.url));
+
+async function uploadBrand(folders) {
+  return {
+    logo: await upload(BRAND.logo, await brandSvg(BRAND.logo), folders.brand),
+    symbol: await upload(BRAND.symbol, await brandSvg(BRAND.symbol), folders.brand),
+  };
+}
+
+/**
+ * Instalaciones anteriores usaban un logo y un perezoso generados. Si siguen puestos, se cambian
+ * por los del manual de marca. Si alguien ya eligió otra imagen en el CMS, no se toca.
+ */
+async function upgradeBrand(folders) {
+  const old = {};
+  for (const [key, name] of [["logo", "korokotico-logo.svg"], ["symbol", "korokotico-simbolo.svg"]]) {
+    old[key] = (await api("GET", `/files?filter[filename_download][_eq]=${name}&fields=id`))[0]?.id;
+  }
+  if (!old.logo && !old.symbol) return;
+  const brand = await uploadBrand(folders);
+  const settings = await api("GET", "/items/site_settings?fields=logo,symbol");
+  const patch = {};
+  for (const key of ["logo", "symbol"]) if (old[key] && settings?.[key] === old[key]) patch[key] = brand[key];
+  if (Object.keys(patch).length) {
+    log("Ajustes del sitio: logo y símbolo del manual de marca");
+    await api("PATCH", "/items/site_settings", patch);
+  }
+  if (!old.symbol) return;
+  for (const c of ["block_hero", "block_page_header", "block_story"]) {
+    const ids = (await api("GET", `/items/${c}?filter[image][_eq]=${old.symbol}&fields=id&limit=-1`)).map((i) => i.id);
+    if (ids.length) {
+      log(`${c}: ${ids.length} imagen(es) cambiadas al símbolo del manual`);
+      await api("PATCH", `/items/${c}`, { keys: ids, data: { image: brand.symbol } });
+    }
+  }
+}
+
 async function seedContent(folders) {
   const pageCount = (await api("GET", "/items/pages?aggregate[count]=*"))[0].count;
   if (Number(pageCount) > 0 && !FORCE) {
@@ -193,8 +232,7 @@ async function seedContent(folders) {
 
   log("Subiendo imágenes");
   const files = {
-    logo: await upload("korokotico-logo.svg", logoSvg, folders.brand),
-    symbol: await upload("korokotico-simbolo.svg", symbolSvg, folders.brand),
+    ...(await uploadBrand(folders)),
     og: await upload("korokotico-og.png", await readFile(new URL("./og.png", import.meta.url)), folders.brand, "image/png"),
   };
   for (const [slug, svg] of Object.entries(collectionSvgs)) {
@@ -241,4 +279,5 @@ const folders = {
 await ensurePermissions();
 await projectSettings();
 await seedContent(folders);
+await upgradeBrand(folders);
 log("Listo ✔");
