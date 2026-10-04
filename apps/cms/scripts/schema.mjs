@@ -1,3 +1,5 @@
+import { COLOR_GROUPS, FONTS } from "./themes.mjs";
+
 // Modelo de datos de Korokotico en Directus.
 // Cada colección define sus campos con etiquetas en español para el panel.
 
@@ -320,6 +322,9 @@ export const COLLECTIONS = [
       f.string("site_url", "URL pública del sitio", { ...half, note: "Ej: https://korokotico.com (para SEO y sitemap)" }),
       f.image("logo", "Logo", half),
       f.image("symbol", "Símbolo / ícono", half),
+      f.m2o("active_theme", "Tema activo", "{{name}}", {
+        note: "Colores y tipografías del sitio. Los temas se editan en Sitio web → Temas.",
+      }),
       f.divider("topbar_divider", "Barra superior"),
       f.string("topbar_text", "Texto"),
       ...linkFields("topbar_link", "Enlace"),
@@ -336,6 +341,29 @@ export const COLLECTIONS = [
       f.image("og_image", "Imagen para compartir por defecto"),
       f.string("twitter_handle", "Usuario de X / Twitter", half),
       f.string("locale", "Idioma (locale)", { ...half, note: "es_CR" }),
+    ],
+  },
+  {
+    collection: "themes",
+    label: "Temas",
+    icon: "palette",
+    group: "folder_content",
+    sort: 9,
+    template: "{{name}}",
+    fields: [
+      id(),
+      f.string("name", "Nombre", { ...half, required: true }),
+      f.select("base", "Basado en", [["clasico", "Clásico"], ["marca", "Marca 2026"]], "marca", {
+        ...half,
+        note: "Los colores que dejes vacíos se toman de este tema.",
+      }),
+      f.select("display_font", "Tipografía de títulos", FONTS.map((n) => [n, n]), null, { ...half, note: "Vacío: la del tema base." }),
+      f.select("body_font", "Tipografía de textos", FONTS.map((n) => [n, n]), null, { ...half, note: "Vacío: la del tema base." }),
+      ...COLOR_GROUPS.flatMap(([title, colors], i) => [
+        f.divider(`colors_divider_${i + 1}`, title),
+        ...colors.map(([key, label]) => f.string(key, label, { ...half, interface: "select-color", display: "color" })),
+      ]),
+      f.string("key", "Clave interna", { hidden: true }),
     ],
   },
   {
@@ -566,6 +594,7 @@ export const RELATIONS = [
   { collection: "request_items", field: "order", related_collection: "orders", meta: { one_field: "items" }, schema: { on_delete: "SET NULL" } },
   { collection: "request_items", field: "collection", related_collection: "catalog_collections", schema: { on_delete: "SET NULL" } },
   { collection: "request_items", field: "package", related_collection: "packages", schema: { on_delete: "SET NULL" } },
+  { collection: "site_settings", field: "active_theme", related_collection: "themes", schema: { on_delete: "SET NULL" } },
   { collection: "orders", field: "shipping_zone", related_collection: "shipping_zones", schema: { on_delete: "SET NULL" } },
   { collection: "request_items_files", field: "request_items_id", related_collection: "request_items", meta: { one_field: "references", junction_field: "directus_files_id" }, schema: { on_delete: "CASCADE" } },
   { collection: "request_items_files", field: "directus_files_id", related_collection: "directus_files", meta: { junction_field: "request_items_id" }, schema: { on_delete: "CASCADE" } },
@@ -581,6 +610,7 @@ export const FILE_RELATIONS = COLLECTIONS.flatMap((c) =>
 // Lectura pública (lo que la web muestra sin iniciar sesión)
 export const PUBLIC_READ = [
   "site_settings",
+  "themes",
   "menus",
   "menu_items",
   "pages",

@@ -1,37 +1,45 @@
 /**
- * Tema visual del sitio.
+ * Temas visuales del sitio.
  *
- * Para cambiar de tema, edita ACTIVE_THEME y vuelve a desplegar (`pnpm release --web`).
- *   - "clasico": crema y terracota (el diseño original)
- *   - "marca":   colores del manual de marca 2026 (blanco, azul noche, lima y violeta)
+ * El tema activo, sus colores y tipografías se administran en Directus:
+ *   - Sitio web → Temas: editar los temas o crear uno nuevo «basado en» Clásico o Marca 2026.
+ *   - Sitio web → Ajustes del sitio → Tema activo: elegir cuál usa la web.
  *
- * Los colores de cada tema están en app/app.css, en el bloque [data-theme="..."].
- * El logo y las imágenes no dependen del tema: se administran en el CMS (Ajustes del sitio).
+ * Este archivo solo define los temas base (los bloques [data-theme="..."] de app/app.css),
+ * el tema que se usa si el CMS no tiene ninguno elegido y las tipografías disponibles.
  */
-export const ACTIVE_THEME: ThemeName = "marca";
+export const FALLBACK_THEME: ThemeName = "marca";
 
 export type ThemeName = keyof typeof THEMES;
 
-type ThemeConfig = {
+type BaseTheme = {
   label: string;
-  /** Hoja de Google Fonts con las tipografías del tema */
-  fonts: string;
+  displayFont: FontName;
+  bodyFont: FontName;
   /** Color de la barra del navegador en móviles */
   themeColor: string;
 };
 
-export const THEMES = {
-  clasico: {
-    label: "Clásico",
-    fonts:
-      "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Nunito:wght@400;600;700;800&display=swap",
-    themeColor: "#fbf5ec",
+/** Tipografías que se pueden elegir en el CMS (deben coincidir con apps/cms/scripts/themes.mjs) */
+export const FONTS = {
+  Fredoka: { query: "Fredoka:wght@400..700", stack: '"Fredoka", ui-rounded, "Nunito", sans-serif' },
+  Fraunces: {
+    query: "Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700",
+    stack: '"Fraunces", ui-serif, Georgia, serif',
   },
-  marca: {
-    label: "Marca 2026",
-    fonts: "https://fonts.googleapis.com/css2?family=Fredoka:wght@400..700&family=Nunito:wght@400;600;700;800&display=swap",
-    themeColor: "#ffffff",
-  },
-} satisfies Record<string, ThemeConfig>;
+  Nunito: { query: "Nunito:wght@400;600;700;800", stack: '"Nunito", ui-sans-serif, system-ui, sans-serif' },
+  "Baloo 2": { query: "Baloo+2:wght@400..800", stack: '"Baloo 2", ui-rounded, sans-serif' },
+  Quicksand: { query: "Quicksand:wght@400..700", stack: '"Quicksand", ui-rounded, sans-serif' },
+  Poppins: { query: "Poppins:wght@400;500;600;700;800", stack: '"Poppins", ui-sans-serif, system-ui, sans-serif' },
+  Montserrat: { query: "Montserrat:wght@400..800", stack: '"Montserrat", ui-sans-serif, system-ui, sans-serif' },
+  "Playfair Display": { query: "Playfair+Display:ital,wght@0,400..800;1,400..800", stack: '"Playfair Display", ui-serif, Georgia, serif' },
+  Lora: { query: "Lora:ital,wght@0,400..700;1,400..700", stack: '"Lora", ui-serif, Georgia, serif' },
+  "DM Serif Display": { query: "DM+Serif+Display:ital@0;1", stack: '"DM Serif Display", ui-serif, Georgia, serif' },
+} as const;
 
-export const theme: ThemeConfig & { name: ThemeName } = { name: ACTIVE_THEME, ...THEMES[ACTIVE_THEME] };
+export type FontName = keyof typeof FONTS;
+
+export const THEMES = {
+  clasico: { label: "Clásico", displayFont: "Fraunces", bodyFont: "Nunito", themeColor: "#fbf5ec" },
+  marca: { label: "Marca 2026", displayFont: "Fredoka", bodyFont: "Nunito", themeColor: "#ffffff" },
+} satisfies Record<string, BaseTheme>;

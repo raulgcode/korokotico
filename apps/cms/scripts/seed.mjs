@@ -10,6 +10,7 @@ import { readFile } from "node:fs/promises";
 import { COLLECTIONS, RELATIONS, FILE_RELATIONS, PUBLIC_READ } from "./schema.mjs";
 import * as content from "./content.mjs";
 import { collectionSvgs } from "./assets.mjs";
+import { DEFAULT_THEMES } from "./themes.mjs";
 
 const URL_ = (process.env.DIRECTUS_URL ?? "http://localhost:8055").replace(/\/$/, "");
 const SITE_URL = (process.env.SITE_URL ?? "http://localhost:5173").replace(/\/$/, "");
@@ -257,6 +258,21 @@ async function seedContent(folders) {
   }
 }
 
+/** Crea los temas de fábrica si no hay ninguno y deja uno activo */
+async function ensureThemes() {
+  let themes = await api("GET", "/items/themes?fields=id,key&limit=-1");
+  if (!themes.length) {
+    log("Temas: Clásico y Marca 2026");
+    themes = await api("POST", "/items/themes?fields=id,key", DEFAULT_THEMES);
+  }
+  const settings = await api("GET", "/items/site_settings?fields=active_theme");
+  if (!settings?.active_theme) {
+    const active = themes.find((t) => t.key === "marca") ?? themes[0];
+    log("Tema activo:", active.key ?? active.id);
+    await api("PATCH", "/items/site_settings", { active_theme: active.id });
+  }
+}
+
 async function projectSettings() {
   await api("PATCH", "/settings", {
     project_name: "Korokotico",
@@ -280,4 +296,5 @@ await ensurePermissions();
 await projectSettings();
 await seedContent(folders);
 await upgradeBrand(folders);
+await ensureThemes();
 log("Listo ✔");

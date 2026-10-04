@@ -10,11 +10,20 @@ export type FileRef = {
 export type MenuItem = { label: string; url: string; new_tab?: boolean | null };
 export type Menu = { key: string; title: string; items: MenuItem[] };
 
+export type Theme = {
+  id: number;
+  name: string;
+  base: string | null;
+  display_font: string | null;
+  body_font: string | null;
+} & Partial<Record<import("./theme").ColorField, string | null>>;
+
 export type SiteSettings = {
   site_name: string;
   site_url: string | null;
   logo: FileRef | null;
   symbol: FileRef | null;
+  active_theme: Theme | null;
   topbar_text: string | null;
   topbar_link_label: string | null;
   topbar_link_url: string | null;

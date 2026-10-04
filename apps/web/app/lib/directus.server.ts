@@ -86,7 +86,7 @@ const FILE = "id,type,width,height,title,description";
 export function getSettings() {
   return cached("settings", () =>
     directus<SiteSettings>("/items/site_settings", {
-      query: { fields: `*,logo.${FILE.replaceAll(",", ",logo.")},symbol.${FILE.replaceAll(",", ",symbol.")},og_image.id` },
+      query: { fields: `*,logo.${FILE.replaceAll(",", ",logo.")},symbol.${FILE.replaceAll(",", ",symbol.")},og_image.id,active_theme.*` },
     }),
   );
 }

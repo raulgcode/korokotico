@@ -3,12 +3,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Temas: el activo se elige en app/theme.config.ts (atributo data-theme en <html>) */
+/*
+ * Temas base (atributo data-theme en <html>). El tema activo y sus cambios de color se administran en Directus
+ * (Temas y Ajustes del sitio); la web los aplica como variables en el style de <html>.
+ */
 
 /* Tema «clasico»: crema, terracota, salvia y rubor */
 :root,
 [data-theme="clasico"] {
   --font-display-family: "Fraunces", ui-serif, Georgia, serif;
+  --font-body-family: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --radius: 1rem;
   --background: #fbf5ec;
   --foreground: #3b2a22;
@@ -60,7 +64,7 @@
 }
 
 @theme inline {
-  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body-family);
   --font-display: var(--font-display-family);
   --color-background: var(--background);
   --color-foreground: var(--foreground);

@@ -15,7 +15,8 @@ apps/
   de crear personaje). Cualquier página nueva queda publicada en `/<slug>`. La portada usa el slug `inicio`.
 - **SEO de cada página**: título, descripción, imagen para compartir y opción de ocultarla de buscadores.
 - **Menús**: menú principal (`header`) y del pie (`footer`).
-- **Ajustes del sitio**: logo, barra superior, pie de página, WhatsApp, correo, redes y SEO por defecto.
+- **Ajustes del sitio**: logo, tema activo, barra superior, pie de página, WhatsApp, correo, redes y SEO por defecto.
+- **Temas**: colores y tipografías del sitio; puedes crear temas propios basados en los existentes.
 - **Colecciones**: se publican en `/colecciones/<slug>` con su propio formulario.
 - **Paquetes, complementos y zonas de envío**: precios del formulario y del carrito.
 - **Solicitudes**: lo que envían los clientes desde el carrito, con sus personajes y referencias (privadas).
@@ -43,20 +44,19 @@ que usaste en el seed (o el seed no terminó). Iguálalos, corre `pnpm cms:seed`
 
 ## Temas de color
 
-El sitio trae dos temas y el activo se elige en `apps/web/app/theme.config.ts`:
+Los temas se administran en Directus:
 
-```ts
-export const ACTIVE_THEME: ThemeName = "marca"; // o "clasico"
-```
+- **Sitio web → Ajustes del sitio → Tema activo**: elige el tema que usa la web.
+- **Sitio web → Temas**: cambia los colores y tipografías de cada tema. Vienen dos: `Clásico` (crema y terracota)
+  y `Marca 2026` (blanco `#FFFFFF`, azul noche `#01112B`, lima `#C6FF34` y violeta `#7F3AEF`).
+- **Tema propio**: abre un tema y usa **Guardar como copia** (menú junto a Guardar) para copiarlo con todos sus colores,
+  o crea uno nuevo, elige **Basado en** y llena solo los colores que quieras cambiar; los vacíos se toman del tema base.
 
-- `clasico`: crema y terracota (diseño original).
-- `marca`: manual de marca 2026: blanco `#FFFFFF`, azul noche `#01112B`, lima `#C6FF34` y violeta `#7F3AEF`.
+Los cambios se ven en la web en unos 30 segundos, sin volver a desplegar. Los temas base viven en
+`apps/web/app/app.css` (bloques `[data-theme="..."]`) y las tipografías disponibles en `apps/web/app/theme.config.ts`.
 
 El tema solo define colores y tipografías. El logo, el símbolo (favicon) y las imágenes de cada bloque se cambian en
 Directus: **Ajustes del sitio → Logo / Símbolo**, y en cada página, en la imagen del bloque (Portada, Historia, etc.).
-
-Los colores de cada tema están en `apps/web/app/app.css` (bloques `[data-theme="..."]`). Después de cambiar el tema,
-despliega la web con `pnpm release --web`.
 
 ## SEO
 
