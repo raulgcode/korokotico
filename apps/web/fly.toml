@@ -1,16 +1,16 @@
-# Web de Korokotico en Fly.io. Despliegue (desde la raíz del monorepo):
-#   fly apps create korokotico-web
-#   fly secrets set --app korokotico-web DIRECTUS_TOKEN=... SESSION_SECRET=...
-#   pnpm deploy:web
-app = "korokotico-web"
+# Web de Korokotico en Fly.io (org daniela-zarraga). Se despliega con `pnpm release`.
+# Primer despliegue (una sola vez):
+#   fly apps create korokotico-web-prod --org daniela-zarraga
+#   fly secrets set --app korokotico-web-prod DIRECTUS_TOKEN=... SESSION_SECRET=...
+app = "korokotico-web-prod"
 primary_region = "dfw"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  DIRECTUS_URL = "https://korokotico-cms.fly.dev"
-  SITE_URL = "https://korokotico-web.fly.dev"
+  DIRECTUS_URL = "https://admin.korokotico.com"
+  SITE_URL = "https://korokotico.com"
   PORT = "3000"
 
 [http_service]

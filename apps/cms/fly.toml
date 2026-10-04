@@ -1,17 +1,16 @@
-# Directus en Fly.io con SQLite sobre un volumen (sin base de datos de pago).
-# Primer despliegue (desde la raíz del monorepo):
-#   fly apps create korokotico-cms
-#   fly volumes create cms_data --app korokotico-cms --region dfw --size 1
-#   fly secrets set --app korokotico-cms SECRET=... ADMIN_EMAIL=... ADMIN_PASSWORD=...
-#   pnpm deploy:cms
-app = "korokotico-cms"
+# Directus en Fly.io (org daniela-zarraga) con SQLite sobre un volumen. Se despliega con `pnpm release`.
+# Primer despliegue (una sola vez):
+#   fly apps create korokotico-cms-prod --org daniela-zarraga
+#   fly volumes create cms_data --app korokotico-cms-prod --region dfw --size 1
+#   fly secrets set --app korokotico-cms-prod SECRET=... ADMIN_EMAIL=... ADMIN_PASSWORD=...
+app = "korokotico-cms-prod"
 primary_region = "dfw"
 
 [build]
   dockerfile = "Dockerfile"
 
 [env]
-  PUBLIC_URL = "https://korokotico-cms.fly.dev"
+  PUBLIC_URL = "https://admin.korokotico.com"
   DEFAULT_LANGUAGE = "es-ES"
   CORS_ENABLED = "true"
   CORS_ORIGIN = "true"

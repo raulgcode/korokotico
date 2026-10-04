@@ -4,8 +4,6 @@
 //   3. despliega la web (apps/web) y comprueba que la home responde 200
 //
 // Flags: --cms (solo el CMS) · --web (solo la web) · --skip-seed
-//        --target=<nombre> usa fly.<nombre>.toml y .env.fly.<nombre> (p. ej. --target=cliente,
-//        la org daniela-zarraga). Sin --target usa fly.toml y .env.fly.
 // Credenciales: .env.fly en la raíz (ver .env.fly.example). Requiere `fly auth login`.
 
 import { spawnSync } from "node:child_process";
@@ -14,13 +12,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ENV_FILE = join(ROOT, ".env.fly");
 const REQUIRED = ["ADMIN_EMAIL", "ADMIN_PASSWORD", "WEBSITE_TOKEN"];
 
 const args = new Set(process.argv.slice(2));
-const target = process.argv.find((a) => a.startsWith("--target="))?.slice("--target=".length);
-const FLY_TOML = target ? `fly.${target}.toml` : "fly.toml";
-const ENV_NAME = target ? `.env.fly.${target}` : ".env.fly";
-const ENV_FILE = join(ROOT, ENV_NAME);
 const onlyCms = args.has("--cms");
 const onlyWeb = args.has("--web");
 const doCms = onlyCms || !onlyWeb;
@@ -56,7 +51,7 @@ function readToml(path, key) {
 
 function readEnvFly() {
   if (!existsSync(ENV_FILE)) {
-    fail(`Falta ${ENV_NAME} en la raíz. Cópialo de .env.fly.example y completa: ${REQUIRED.join(", ")}.`);
+    fail(`Falta .env.fly en la raíz. Cópialo de .env.fly.example y completa: ${REQUIRED.join(", ")}.`);
   }
   const env = {};
   for (const line of readFileSync(ENV_FILE, "utf8").split(/\r?\n/)) {
@@ -64,7 +59,7 @@ function readEnvFly() {
     if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, "");
   }
   const missing = REQUIRED.filter((k) => !env[k]);
-  if (missing.length) fail(`A ${ENV_NAME} le faltan: ${missing.join(", ")}`);
+  if (missing.length) fail(`A .env.fly le faltan: ${missing.join(", ")}`);
   return env;
 }
 
@@ -83,15 +78,15 @@ log("Comprobando la sesión de Fly");
 const who = run("fly", ["auth", "whoami"], { capture: true }).trim().split(/\r?\n/).pop();
 console.log(`  Sesión: ${who}`);
 
-const cmsApp = readToml(`apps/cms/${FLY_TOML}`, "app");
-const cmsUrl = readToml(`apps/cms/${FLY_TOML}`, "PUBLIC_URL").replace(/\/$/, "");
-const webApp = readToml(`apps/web/${FLY_TOML}`, "app");
-const webUrl = readToml(`apps/web/${FLY_TOML}`, "SITE_URL").replace(/\/$/, "");
+const cmsApp = readToml("apps/cms/fly.toml", "app");
+const cmsUrl = readToml("apps/cms/fly.toml", "PUBLIC_URL").replace(/\/$/, "");
+const webApp = readToml("apps/web/fly.toml", "app");
+const webUrl = readToml("apps/web/fly.toml", "SITE_URL").replace(/\/$/, "");
 const creds = doSeed ? readEnvFly() : null;
 
 if (doCms) {
   log(`Desplegando el CMS (${cmsApp})`);
-  run("fly", ["deploy", "--config", FLY_TOML, "--remote-only", "--ha=false"], { cwd: join(ROOT, "apps/cms") });
+  run("fly", ["deploy", "--remote-only", "--ha=false"], { cwd: join(ROOT, "apps/cms") });
 
   log("Esperando a que el CMS responda");
   await waitFor(`${cmsUrl}/server/ping`, async (r) => r.ok && (await r.text()).trim() === "pong", "El CMS");
@@ -118,7 +113,7 @@ if (doWeb) {
     "deploy",
     ".",
     "--config",
-    `apps/web/${FLY_TOML}`,
+    "apps/web/fly.toml",
     "--dockerfile",
     "apps/web/Dockerfile",
     "--remote-only",

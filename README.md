@@ -70,19 +70,22 @@ con tamaños optimizados.
 Las dos máquinas se apagan solas cuando no hay visitas (`auto_stop_machines`) y arrancan con la primera petición.
 La base de datos es SQLite dentro de un volumen de 1 GB (≈ $0.15/mes), así que no se paga Postgres.
 
+Producción vive en la org de Fly `daniela-zarraga`: la web en https://korokotico.com (app `korokotico-web-prod`)
+y el CMS en https://admin.korokotico.com (app `korokotico-cms-prod`). El DNS está en Cloudflare.
+
 ```bash
 # CMS
-fly apps create korokotico-cms
-fly volumes create cms_data --app korokotico-cms --region dfw --size 1
-fly secrets set --app korokotico-cms SECRET="$(openssl rand -hex 32)" ADMIN_EMAIL=tu@correo.com ADMIN_PASSWORD='una-clave-segura'
+fly apps create korokotico-cms-prod --org daniela-zarraga
+fly volumes create cms_data --app korokotico-cms-prod --region dfw --size 1
+fly secrets set --app korokotico-cms-prod SECRET="$(openssl rand -hex 32)" ADMIN_EMAIL=tu@correo.com ADMIN_PASSWORD='una-clave-segura'
 pnpm deploy:cms
 # Carga el esquema y el contenido en el CMS de producción
-DIRECTUS_URL=https://korokotico-cms.fly.dev SITE_URL=https://korokotico-web.fly.dev \
+DIRECTUS_URL=https://admin.korokotico.com SITE_URL=https://korokotico.com \
   ADMIN_EMAIL=tu@correo.com ADMIN_PASSWORD='una-clave-segura' WEBSITE_TOKEN="$(openssl rand -hex 32)" pnpm cms:seed
 
 # Web (usa el mismo WEBSITE_TOKEN del paso anterior)
-fly apps create korokotico-web
-fly secrets set --app korokotico-web DIRECTUS_TOKEN=<WEBSITE_TOKEN> SESSION_SECRET="$(openssl rand -hex 32)"
+fly apps create korokotico-web-prod --org daniela-zarraga
+fly secrets set --app korokotico-web-prod DIRECTUS_TOKEN=<WEBSITE_TOKEN> SESSION_SECRET="$(openssl rand -hex 32)"
 pnpm deploy:web
 ```
 
