@@ -17,11 +17,18 @@ export async function loader({ params }: Route.LoaderArgs) {
     getCreateFormBlock(),
   ]);
   if (!collection) throw data("Colección no encontrada", { status: 404 });
-  return { collection, collections, shop, form };
+  return data(
+    { collection, collections, shop, form },
+    { headers: { "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=300" } },
+  );
 }
 
 export async function action({ request }: Route.ActionArgs) {
   return addToCart(request);
+}
+
+export function headers({ loaderHeaders }: Route.HeadersArgs) {
+  return { "Cache-Control": loaderHeaders.get("Cache-Control") ?? "no-store" };
 }
 
 export function meta({ loaderData, matches }: Route.MetaArgs) {
