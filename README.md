@@ -41,6 +41,21 @@ Con `pnpm --filter cms seed -- --force-content` borra y vuelve a cargar el conte
 Si la web muestra «El CMS rechazó DIRECTUS_TOKEN», el token de `apps/web/.env` no coincide con el `WEBSITE_TOKEN`
 que usaste en el seed (o el seed no terminó). Iguálalos, corre `pnpm cms:seed` otra vez y reinicia `pnpm dev`.
 
+## Temas de color
+
+El sitio trae dos temas y el activo se elige en `apps/web/app/theme.config.ts`:
+
+```ts
+export const ACTIVE_THEME: ThemeName = "marca"; // o "clasico"
+```
+
+- `clasico`: crema y terracota (diseño original).
+- `marca`: manual de marca 2026: blanco `#FFFFFF`, azul noche `#01112B`, lima `#C6FF34` y violeta `#7F3AEF`,
+  con el logo y el símbolo del manual (`apps/web/public/themes/marca`).
+
+Los colores de cada tema están en `apps/web/app/app.css` (bloques `[data-theme="..."]`). Después de cambiar el tema,
+despliega la web con `pnpm release --web`.
+
 ## SEO
 
 Cada ruta genera con `meta` de React Router: `<title>`, descripción, canonical, robots, Open Graph, Twitter Card y JSON-LD

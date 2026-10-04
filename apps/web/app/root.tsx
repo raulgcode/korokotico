@@ -18,6 +18,7 @@ import { SmartLink } from "~/components/smart-link";
 import { assetUrl } from "~/lib/assets";
 import { getMenus, getSettings } from "~/lib/directus.server";
 import { seo, type RootData } from "~/lib/seo";
+import { theme } from "~/theme.config";
 import { getCart } from "~/lib/session.server";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -29,23 +30,24 @@ export async function loader({ request }: Route.LoaderArgs) {
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Nunito:wght@400;600;700;800&display=swap",
-  },
+  { rel: "stylesheet", href: theme.fonts },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const data = useRouteLoaderData<typeof loader>("root");
   const icon = data?.settings.symbol;
   return (
-    <html lang="es">
+    <html lang="es" data-theme={theme.name}>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content="#fbf5ec" />
+        <meta name="theme-color" content={theme.themeColor} />
         <meta name="format-detection" content="telephone=no" />
-        {icon && <link rel="icon" href={assetUrl(icon, { width: 64 })} type={icon.type ?? undefined} />}
+        {theme.symbol ? (
+          <link rel="icon" href={theme.symbol} type="image/svg+xml" />
+        ) : (
+          icon && <link rel="icon" href={assetUrl(icon, { width: 64 })} type={icon.type ?? undefined} />
+        )}
         {icon && <link rel="apple-touch-icon" href={assetUrl(icon, { width: 180 })} />}
         <Meta />
         <Links />

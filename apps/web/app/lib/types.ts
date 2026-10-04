@@ -37,13 +37,13 @@ export type HeroBlock = {
   kicker: string | null;
   title: string;
   description: string | null;
-  image: FileRef | null;
+  image: FileRef | string | null;
   image_caption: string | null;
   features: { text: string }[] | null;
 } & Link<"primary"> &
   Link<"secondary">;
 
-export type PageHeaderBlock = { eyebrow: string | null; title: string; subtitle: string | null; image: FileRef | null };
+export type PageHeaderBlock = { eyebrow: string | null; title: string; subtitle: string | null; image: FileRef | string | null };
 
 export type CollectionsBlock = {
   eyebrow: string | null;
@@ -67,7 +67,7 @@ export type StoryBlock = {
   eyebrow: string | null;
   title: string | null;
   content: string | null;
-  image: FileRef | null;
+  image: FileRef | string | null;
 } & Link<"button">;
 
 export type RichTextBlock = { title: string | null; content: string | null };

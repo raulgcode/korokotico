@@ -3,8 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Paleta Korokotico: crema, terracota, salvia y rubor */
-:root {
+/* Temas: el activo se elige en app/theme.config.ts (atributo data-theme en <html>) */
+
+/* Tema «clasico»: crema, terracota, salvia y rubor */
+:root,
+[data-theme="clasico"] {
+  --font-display-family: "Fraunces", ui-serif, Georgia, serif;
   --radius: 1rem;
   --background: #fbf5ec;
   --foreground: #3b2a22;
@@ -29,9 +33,35 @@
   --cocoa: #3b2a22;
 }
 
+/* Tema «marca»: manual de marca 2026 (blanco, azul noche, lima y violeta) */
+[data-theme="marca"] {
+  --font-display-family: "Fredoka", ui-rounded, "Nunito", sans-serif;
+  --background: #ffffff;
+  --foreground: #01112b;
+  --card: #ffffff;
+  --card-foreground: #01112b;
+  --popover: #ffffff;
+  --popover-foreground: #01112b;
+  --primary: #7f3aef;
+  --primary-foreground: #ffffff;
+  --secondary: #c6ff34;
+  --secondary-foreground: #01112b;
+  --muted: #f4f2fb;
+  --muted-foreground: #4a5468;
+  --accent: #eeffc4;
+  --accent-foreground: #01112b;
+  --destructive: #d92d4b;
+  --border: #e4e5e8;
+  --input: #d3d5d9;
+  --ring: #7f3aef;
+  --leaf: #01112b;
+  --sun: #c6ff34;
+  --cocoa: #01112b;
+}
+
 @theme inline {
   --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-display: var(--font-display-family);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
