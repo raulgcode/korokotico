@@ -3,7 +3,7 @@
 #   fly secrets set --app korokotico-web DIRECTUS_TOKEN=... SESSION_SECRET=...
 #   pnpm deploy:web
 app = "korokotico-web"
-primary_region = "mia"
+primary_region = "dfw"
 
 [build]
   dockerfile = "Dockerfile"

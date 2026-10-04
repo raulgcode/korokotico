@@ -1,11 +1,11 @@
 # Directus en Fly.io con SQLite sobre un volumen (sin base de datos de pago).
 # Primer despliegue (desde la raíz del monorepo):
 #   fly apps create korokotico-cms
-#   fly volumes create cms_data --app korokotico-cms --region mia --size 1
+#   fly volumes create cms_data --app korokotico-cms --region dfw --size 1
 #   fly secrets set --app korokotico-cms SECRET=... ADMIN_EMAIL=... ADMIN_PASSWORD=...
 #   pnpm deploy:cms
 app = "korokotico-cms"
-primary_region = "mia"
+primary_region = "dfw"
 
 [build]
   dockerfile = "Dockerfile"

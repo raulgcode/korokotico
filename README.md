@@ -71,7 +71,7 @@ La base de datos es SQLite dentro de un volumen de 1 GB (≈ $0.15/mes), así qu
 ```bash
 # CMS
 fly apps create korokotico-cms
-fly volumes create cms_data --app korokotico-cms --region mia --size 1
+fly volumes create cms_data --app korokotico-cms --region dfw --size 1
 fly secrets set --app korokotico-cms SECRET="$(openssl rand -hex 32)" ADMIN_EMAIL=tu@correo.com ADMIN_PASSWORD='una-clave-segura'
 pnpm deploy:cms
 # Carga el esquema y el contenido en el CMS de producción
@@ -83,6 +83,22 @@ fly apps create korokotico-web
 fly secrets set --app korokotico-web DIRECTUS_TOKEN=<WEBSITE_TOKEN> SESSION_SECRET="$(openssl rand -hex 32)"
 pnpm deploy:web
 ```
+
+Si el primer deploy avisa que no pudo asignar IPs, asígnalas a mano en cada app:
+`fly ips allocate-v4 --shared -a <app>` y `fly ips allocate-v6 -a <app>`.
+
+### Siguientes despliegues: `pnpm release`
+
+Después de la primera vez, todo es un solo comando (requiere `fly auth login`):
+
+```bash
+cp .env.fly.example .env.fly   # una sola vez: ADMIN_EMAIL, ADMIN_PASSWORD y WEBSITE_TOKEN de producción
+pnpm release                   # CMS → seed (esquema y permisos) → web → comprueba que responden
+pnpm release --web             # solo la web
+pnpm release --cms --skip-seed # solo el CMS, sin seed
+```
+
+El seed no pisa el contenido que ya existe en producción; solo actualiza esquema y permisos.
 
 Si usas otros nombres de app o un dominio propio, cambia `PUBLIC_URL` en `apps/cms/fly.toml` y `DIRECTUS_URL` / `SITE_URL`
 en `apps/web/fly.toml`. Haz copias del volumen con `fly volumes snapshots list`.
