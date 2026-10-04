@@ -14,6 +14,7 @@
     "cms:seed": "pnpm --filter cms seed",
     "deploy:cms": "cd apps/cms && fly deploy --remote-only",
     "release": "node scripts/deploy.mjs",
+    "release:cliente": "node scripts/deploy.mjs --target=cliente",
     "deploy:web": "fly deploy . --config apps/web/fly.toml --dockerfile apps/web/Dockerfile"
   }
 }
