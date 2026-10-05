@@ -5,7 +5,7 @@
 //
 // Uso:  DIRECTUS_URL=... ADMIN_EMAIL=... ADMIN_PASSWORD=... WEBSITE_TOKEN=... pnpm cms:seed
 //       Agrega --force-content para volver a cargar el contenido (borra páginas, menús y colecciones).
-//       Agrega --demo-parts para subir piezas de prueba al creador de muñecos y publicar su página (solo desarrollo).
+//       Agrega --demo-parts para subir piezas de prueba al creador de muñecos (solo desarrollo).
 
 import { readFile } from "node:fs/promises";
 import { COLLECTIONS, RELATIONS, FILE_RELATIONS, PUBLIC_READ } from "./schema.mjs";
@@ -276,8 +276,17 @@ async function ensureThemes() {
   }
 }
 
+/** Agrega «Diseña tu muñeco» al menú principal si no está (solo cuando el seed crea o publica la página) */
+async function addMenuLink() {
+  const menu = (await api("GET", "/items/menus?filter[key][_eq]=header&fields=id,items.url,items.sort"))[0];
+  if (!menu || menu.items.some((i) => i.url === `/${doll.PAGE_SLUG}`)) return;
+  log("Menú principal: Diseña tu muñeco");
+  const sort = Math.max(0, ...menu.items.map((i) => i.sort ?? 0)) + 1;
+  await api("POST", "/items/menu_items", { menu: menu.id, label: doll.builderPage.title, url: `/${doll.PAGE_SLUG}`, sort });
+}
+
 /**
- * Creador de muñecos: tipos de pieza de fábrica y su página (en borrador hasta que haya piezas).
+ * Creador de muñecos: tipos de pieza de fábrica y su página publicada (sin piezas muestra un aviso).
  * No toca nada que ya exista, así que se puede correr en producción.
  */
 async function ensureDollBuilder(folders) {
@@ -287,16 +296,20 @@ async function ensureDollBuilder(folders) {
     types = await api("POST", "/items/doll_part_types?fields=id,name", doll.partTypes);
   }
 
-  const page = (await api("GET", `/items/pages?filter[slug][_eq]=${doll.PAGE_SLUG}&fields=id,status`))[0];
+  const page = (await api("GET", `/items/pages?filter[slug][_eq]=${doll.PAGE_SLUG}&fields=id,status,date_updated`))[0];
   if (!page) {
-    log(`Creador de muñecos: página /${doll.PAGE_SLUG} (borrador)`);
+    log(`Creador de muñecos: página /${doll.PAGE_SLUG}`);
     await api("POST", "/items/pages", {
-      status: DEMO_PARTS ? "published" : "draft",
+      status: "published",
       ...doll.builderPage,
       blocks: [{ collection: "block_create_form", item: doll.builderBlock, sort: 1 }],
     });
-  } else if (DEMO_PARTS && page.status !== "published") {
+    await addMenuLink();
+  } else if (page.status !== "published" && !page.date_updated) {
+    // Versiones anteriores del seed la creaban en borrador; si nadie la ha tocado, se publica.
+    log(`Creador de muñecos: publicando /${doll.PAGE_SLUG}`);
     await api("PATCH", `/items/pages/${page.id}`, { status: "published" });
+    await addMenuLink();
   }
 
   if (!DEMO_PARTS) return;

@@ -12,6 +12,8 @@
     "cms:up": "docker compose up -d cms",
     "cms:down": "docker compose down",
     "cms:seed": "pnpm --filter cms seed",
+    "cms:migrate": "pnpm --filter cms seed",
+    "cms:migrate:demo": "pnpm --filter cms seed -- --demo-parts",
     "deploy:cms": "cd apps/cms && fly deploy --remote-only",
     "release": "node scripts/deploy.mjs",
     "deploy:web": "fly deploy . --config apps/web/fly.toml --dockerfile apps/web/Dockerfile"
