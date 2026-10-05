@@ -87,10 +87,15 @@ async function ensureSchema() {
     await api("PATCH", `/collections/${c.collection}`, { meta });
     if (c.folder) continue;
 
-    const fields = new Set((await api("GET", `/fields/${c.collection}`)).map((fl) => fl.field));
+    const fields = new Map((await api("GET", `/fields/${c.collection}`)).map((fl) => [fl.field, fl]));
     for (const fl of c.fields) {
-      if (fields.has(fl.field)) {
-        if (fl.field !== "id") await api("PATCH", `/fields/${c.collection}/${fl.field}`, { meta: fl.meta });
+      const current = fields.get(fl.field);
+      if (current) {
+        if (fl.field === "id") continue;
+        // Entero → decimal se cambia en el lugar (conserva los datos); nunca se borra un campo
+        const widen = current.type === "integer" && fl.type === "float";
+        if (widen) log("Cambiando a decimal", `${c.collection}.${fl.field}`);
+        await api("PATCH", `/fields/${c.collection}/${fl.field}`, widen ? { type: fl.type, schema: {}, meta: fl.meta } : { meta: fl.meta });
       } else {
         log("Agregando campo", `${c.collection}.${fl.field}`);
         await api("POST", `/fields/${c.collection}`, fl);
