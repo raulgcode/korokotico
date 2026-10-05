@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getOrderByToken } from "~/lib/directus.server";
 import { rootData, seo } from "~/lib/seo";
+import { assetUrl } from "~/lib/assets";
 import { formatPrice } from "~/lib/utils";
 
 const STATUS: Record<string, string> = {
@@ -74,10 +75,13 @@ export default function OrderPage({ loaderData }: Route.ComponentProps) {
         <CardContent className="space-y-4">
           {order.items.map((item) => (
             <div key={item.id} className="flex items-start justify-between gap-4 border-b border-dashed pb-4 last:border-0 last:pb-0">
-              <div>
+              {item.design_image && (
+                <img src={assetUrl(item.design_image, { width: 240 })} alt={`Diseño de ${item.character_name}`} className="h-24 w-16 shrink-0 rounded-lg bg-accent/40 object-contain" />
+              )}
+              <div className="flex-1">
                 <p className="font-display text-lg font-semibold">{item.character_name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {item.collection?.title} · {item.package?.name} · {item.units} {item.units === 1 ? "unidad" : "unidades"}
+                  {item.source === "creador" ? "Diseñado en el creador" : item.collection?.title} · {item.package?.name} · {item.units} {item.units === 1 ? "unidad" : "unidades"}
                 </p>
               </div>
               <p className="font-bold whitespace-nowrap">{formatPrice(item.subtotal)}</p>

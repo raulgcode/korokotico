@@ -5,17 +5,20 @@
 //
 // Uso:  DIRECTUS_URL=... ADMIN_EMAIL=... ADMIN_PASSWORD=... WEBSITE_TOKEN=... pnpm cms:seed
 //       Agrega --force-content para volver a cargar el contenido (borra páginas, menús y colecciones).
+//       Agrega --demo-parts para subir piezas de prueba al creador de muñecos y publicar su página (solo desarrollo).
 
 import { readFile } from "node:fs/promises";
 import { COLLECTIONS, RELATIONS, FILE_RELATIONS, PUBLIC_READ } from "./schema.mjs";
 import * as content from "./content.mjs";
 import { collectionSvgs } from "./assets.mjs";
 import { DEFAULT_THEMES } from "./themes.mjs";
+import * as doll from "./doll.mjs";
 
 const URL_ = (process.env.DIRECTUS_URL ?? "http://localhost:8055").replace(/\/$/, "");
 const SITE_URL = (process.env.SITE_URL ?? "http://localhost:5173").replace(/\/$/, "");
 const { ADMIN_EMAIL, ADMIN_PASSWORD, WEBSITE_TOKEN } = process.env;
 const FORCE = process.argv.includes("--force-content");
+const DEMO_PARTS = process.argv.includes("--demo-parts");
 
 if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !WEBSITE_TOKEN) {
   console.error("Faltan variables: ADMIN_EMAIL, ADMIN_PASSWORD y WEBSITE_TOKEN son obligatorias.");
@@ -273,6 +276,43 @@ async function ensureThemes() {
   }
 }
 
+/**
+ * Creador de muñecos: tipos de pieza de fábrica y su página (en borrador hasta que haya piezas).
+ * No toca nada que ya exista, así que se puede correr en producción.
+ */
+async function ensureDollBuilder(folders) {
+  let types = await api("GET", "/items/doll_part_types?fields=id,name&limit=-1");
+  if (!types.length) {
+    log("Creador de muñecos: tipos de pieza");
+    types = await api("POST", "/items/doll_part_types?fields=id,name", doll.partTypes);
+  }
+
+  const page = (await api("GET", `/items/pages?filter[slug][_eq]=${doll.PAGE_SLUG}&fields=id,status`))[0];
+  if (!page) {
+    log(`Creador de muñecos: página /${doll.PAGE_SLUG} (borrador)`);
+    await api("POST", "/items/pages", {
+      status: DEMO_PARTS ? "published" : "draft",
+      ...doll.builderPage,
+      blocks: [{ collection: "block_create_form", item: doll.builderBlock, sort: 1 }],
+    });
+  } else if (DEMO_PARTS && page.status !== "published") {
+    await api("PATCH", `/items/pages/${page.id}`, { status: "published" });
+  }
+
+  if (!DEMO_PARTS) return;
+  const count = (await api("GET", "/items/doll_parts?aggregate[count]=*"))[0].count;
+  if (Number(count) > 0) return;
+  log("Creador de muñecos: piezas de prueba");
+  const typeId = Object.fromEntries(types.map((t) => [t.name, t.id]));
+  const parts = [];
+  for (const [i, [type, name, svg, price, isDefault]] of doll.demoParts.entries()) {
+    const slug = `${type}-${name}`.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "-");
+    const image = await upload(`pieza-${slug}.svg`, svg, folders.parts);
+    parts.push({ status: "published", sort: i + 1, type: typeId[type], name, image, price, is_default: isDefault });
+  }
+  await api("POST", "/items/doll_parts", parts);
+}
+
 async function projectSettings() {
   await api("PATCH", "/settings", {
     project_name: "Korokotico",
@@ -291,10 +331,13 @@ const folders = {
   brand: await ensureFolder("Marca"),
   collections: await ensureFolder("Colecciones"),
   references: await ensureFolder("Referencias de clientes"),
+  parts: await ensureFolder("Piezas del creador"),
+  designs: await ensureFolder("Diseños de clientes"),
 };
 await ensurePermissions();
 await projectSettings();
 await seedContent(folders);
 await upgradeBrand(folders);
 await ensureThemes();
+await ensureDollBuilder(folders);
 log("Listo ✔");

@@ -280,6 +280,16 @@ export const BLOCKS = [
     template: "{{step1_title}}",
     fields: [
       id(),
+      f.select(
+        "mode",
+        "Modo",
+        [
+          ["formulario", "Formulario: el cliente cuenta su idea"],
+          ["creador", "Creador de muñecos: el cliente arma el muñeco pieza por pieza"],
+        ],
+        "formulario",
+        { note: "El creador usa las piezas de Creador de muñecos → Piezas." },
+      ),
       f.divider("heading_divider", "Encabezado (se usa en la página de cada colección)"),
       f.boolean("show_heading", "Mostrar encabezado en esta página", false),
       f.string("eyebrow", "Antetítulo"),
@@ -297,9 +307,18 @@ export const BLOCKS = [
       f.string("submit_label", "Texto del botón"),
       f.string("size_note", "Nota de tamaño"),
       ...linkFields("process_link", "Enlace al proceso"),
+      f.divider("builder_divider", "Creador de muñecos (solo en modo Creador)"),
+      f.integer("canvas_width", "Ancho del lienzo (px)", { ...half, note: "Todas las piezas se exportan a este tamaño" }, { default_value: 1000 }),
+      f.integer("canvas_height", "Alto del lienzo (px)", { ...half, note: "Ej: 1000 × 1400" }, { default_value: 1400 }),
+      f.string("canvas_background", "Fondo de la vista previa", { ...half, interface: "select-color", note: "Vacío = transparente" }),
+      f.string("review_title", "Título de la revisión final", half),
+      f.text("review_note", "Nota de la revisión final"),
+      f.text("empty_message", "Mensaje si todavía no hay piezas"),
     ],
   },
 ];
+
+// Directus sin licencia admite 25 colecciones (sin contar carpetas): hoy se usan todas.
 
 export const BLOCK_COLLECTIONS = BLOCKS.map((b) => b.collection);
 
@@ -308,6 +327,52 @@ export const COLLECTIONS = [
   { collection: "folder_content", folder: true, label: "Sitio web", icon: "web", sort: 1 },
   { collection: "folder_blocks", folder: true, label: "Bloques de página", icon: "widgets", sort: 2, collapse: "closed" },
   { collection: "folder_shop", folder: true, label: "Pedidos", icon: "shopping_bag", sort: 3 },
+  { collection: "folder_builder", folder: true, label: "Creador de muñecos", icon: "face_retouching_natural", sort: 4 },
+  {
+    collection: "doll_part_types",
+    label: "Tipos de pieza",
+    icon: "category",
+    group: "folder_builder",
+    sort: 1,
+    sortField: "sort",
+    template: "{{name}}",
+    archive: true,
+    fields: [
+      id(),
+      f.status(),
+      f.sort(),
+      f.string("name", "Nombre", { ...half, required: true, note: "Ej: Ojos" }),
+      f.integer("layer", "Capa", { ...half, required: true, note: "Las capas más altas se dibujan encima (cuerpo 10, ojos 40, cabello 60…)" }, { default_value: 10 }),
+      f.boolean("required", "Obligatorio", false, { ...half, note: "El cliente tiene que elegir una pieza de este tipo" }),
+      f.boolean("multiple", "Permite varias", false, { ...half, note: "Ej: accesorios" }),
+      f.alias("parts", "Piezas", ["o2m"], "list-o2m", { options: { template: "{{name}}", enableSelect: false } }),
+    ],
+  },
+  {
+    collection: "doll_parts",
+    label: "Piezas",
+    icon: "extension",
+    group: "folder_builder",
+    sort: 2,
+    sortField: "sort",
+    template: "{{type.name}} · {{name}}",
+    archive: true,
+    fields: [
+      id(),
+      f.status(),
+      f.sort(),
+      f.m2o("type", "Tipo", "{{name}}", { ...half, required: true }),
+      f.string("name", "Nombre", { ...half, required: true }),
+      f.image("image", "Imagen de la capa", {
+        required: true,
+        note: "PNG transparente del mismo tamaño que el lienzo, con la pieza ya dibujada en su lugar.",
+      }),
+      f.image("thumbnail", "Miniatura (opcional)", { note: "Imagen pequeña para el selector. Si está vacía se usa la imagen de la capa." }),
+      f.integer("price", "Precio extra (₡)", { ...half, note: "0 si no cambia el precio" }, { default_value: 0 }),
+      f.integer("layer", "Capa propia (opcional)", { ...half, note: "Solo si esta pieza va en otra capa que su tipo" }),
+      f.boolean("is_default", "Elegida al empezar", false, half),
+    ],
+  },
 
   {
     collection: "site_settings",
@@ -566,6 +631,11 @@ export const COLLECTIONS = [
       f.integer("units", "Unidades", half),
       f.integer("unit_price", "Precio unitario (₡)", half),
       f.integer("subtotal", "Subtotal (₡)", half),
+      f.divider("design_divider", "Creador de muñecos"),
+      f.select("source", "Origen", [["formulario", "Formulario"], ["creador", "Creador de muñecos"]], "formulario", half),
+      f.integer("parts_price", "Piezas con costo extra (₡)", half),
+      f.image("design_image", "Diseño final"),
+      f.json("design_parts", "Piezas elegidas", { readonly: true }),
       f.timestamp("date_created", "Creado", "date-created"),
     ],
   },
@@ -595,6 +665,7 @@ export const RELATIONS = [
   { collection: "request_items", field: "collection", related_collection: "catalog_collections", schema: { on_delete: "SET NULL" } },
   { collection: "request_items", field: "package", related_collection: "packages", schema: { on_delete: "SET NULL" } },
   { collection: "site_settings", field: "active_theme", related_collection: "themes", schema: { on_delete: "SET NULL" } },
+  { collection: "doll_parts", field: "type", related_collection: "doll_part_types", meta: { one_field: "parts", sort_field: "sort" }, schema: { on_delete: "CASCADE" } },
   { collection: "orders", field: "shipping_zone", related_collection: "shipping_zones", schema: { on_delete: "SET NULL" } },
   { collection: "request_items_files", field: "request_items_id", related_collection: "request_items", meta: { one_field: "references", junction_field: "directus_files_id" }, schema: { on_delete: "CASCADE" } },
   { collection: "request_items_files", field: "directus_files_id", related_collection: "directus_files", meta: { junction_field: "request_items_id" }, schema: { on_delete: "CASCADE" } },
@@ -620,4 +691,6 @@ export const PUBLIC_READ = [
   "packages",
   "addons",
   "shipping_zones",
+  "doll_part_types",
+  "doll_parts",
 ];

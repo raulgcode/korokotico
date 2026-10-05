@@ -4,6 +4,7 @@ import type {
   Addon,
   Block,
   CatalogCollection,
+  DollPartType,
   Menu,
   Order,
   Package,
@@ -155,12 +156,31 @@ export async function getShop() {
 /** Bloque del formulario de la página «crear» (lo reutilizan las páginas de colección) */
 export async function getCreateFormBlock() {
   const page = await getPage("crear");
-  const block = page?.blocks?.find((b) => b.collection === "block_create_form");
+  const block = page?.blocks?.find((b) => b.collection === "block_create_form" && b.item?.mode !== "creador");
   return (block?.item ?? null) as Extract<Block, { collection: "block_create_form" }>["item"] | null;
 }
 
+/** Tipos de pieza publicados del creador de muñecos, con sus piezas publicadas */
+export async function getDollParts() {
+  const image = (f: string) => FILE.split(",").map((x) => `parts.${f}.${x}`).join(",");
+  const types = await directus<DollPartType[]>("/items/doll_part_types", {
+    query: {
+      "filter[status][_eq]": "published",
+      fields: `id,name,layer,required,multiple,parts.id,parts.name,parts.price,parts.layer,parts.is_default,${image("image")},${image("thumbnail")}`,
+      "deep[parts][_filter][status][_eq]": "published",
+      "deep[parts][_sort]": "sort",
+      "deep[parts][_limit]": -1,
+      sort: "sort",
+      limit: -1,
+    },
+  });
+  return types
+    .map((t) => ({ ...t, parts: (t.parts ?? []).filter((p) => p.image) }))
+    .filter((t) => t.parts.length);
+}
+
 const ITEM_FIELDS =
-  "id,status,character_name,colors,interests,idea,units,unit_price,subtotal,addons,collection.title,collection.slug,package.name,package.includes_addons,references.directus_files_id.filename_download";
+  "id,status,source,design_image,design_parts,parts_price,character_name,colors,interests,idea,units,unit_price,subtotal,addons,collection.title,collection.slug,package.name,package.includes_addons,references.directus_files_id.filename_download";
 
 export function getRequestItems(ids: number[]) {
   if (!ids.length) return Promise.resolve([] as RequestItem[]);
@@ -187,14 +207,17 @@ export async function findOrder(code: string, email: string) {
   return orders[0] ?? null;
 }
 
-export async function getReferencesFolder() {
-  return cached("references-folder", async () => {
+function getFolder(name: string) {
+  return cached(`folder:${name}`, async () => {
     const folders = await directus<{ id: string }[]>("/folders", {
-      query: { "filter[name][_eq]": "Referencias de clientes", fields: "id", limit: 1 },
+      query: { "filter[name][_eq]": name, fields: "id", limit: 1 },
     });
     return folders[0]?.id ?? null;
   });
 }
+
+export const getReferencesFolder = () => getFolder("Referencias de clientes");
+export const getDesignsFolder = () => getFolder("Diseños de clientes");
 
 export async function uploadFile(file: File, folder: string | null) {
   const form = new FormData();

@@ -101,6 +101,7 @@ export type ContactBlock = {
 };
 
 export type CreateFormBlock = {
+  mode: "formulario" | "creador" | null;
   show_heading: boolean;
   eyebrow: string | null;
   title: string | null;
@@ -114,7 +115,34 @@ export type CreateFormBlock = {
   summary_note: string | null;
   submit_label: string | null;
   size_note: string | null;
+  canvas_width: number | null;
+  canvas_height: number | null;
+  canvas_background: string | null;
+  review_title: string | null;
+  review_note: string | null;
+  empty_message: string | null;
 } & Link<"process_link">;
+
+export type DollPart = {
+  id: number;
+  name: string;
+  price: number | null;
+  layer: number | null;
+  is_default: boolean | null;
+  image: FileRef;
+  thumbnail: FileRef | null;
+};
+
+export type DollPartType = {
+  id: number;
+  name: string;
+  layer: number;
+  required: boolean | null;
+  multiple: boolean | null;
+  parts: DollPart[];
+};
+
+export type DesignPart = { id: number; type: string; name: string; price: number };
 
 export type Block =
   | { id: number; collection: "block_hero"; item: HeroBlock }
@@ -176,6 +204,10 @@ export type RequestItem = {
   collection: { title: string; slug: string } | null;
   package: { name: string; includes_addons: boolean } | null;
   references: { directus_files_id: { filename_download: string } | null }[] | null;
+  source: "formulario" | "creador" | null;
+  design_image: string | null;
+  design_parts: DesignPart[] | null;
+  parts_price: number | null;
 };
 
 export type Order = {

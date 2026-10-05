@@ -24,7 +24,7 @@ type Props = {
   forceHeading?: boolean;
 };
 
-function FieldError({ id, message }: { id: string; message?: string }) {
+export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
     <p id={id} className="text-sm font-semibold text-destructive">
@@ -33,7 +33,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   );
 }
 
-function Step({ title, children }: { title: string | null; children: React.ReactNode }) {
+export function Step({ title, children }: { title: string | null; children: React.ReactNode }) {
   return (
     <Card className="gap-5 border-2 shadow-none">
       <CardHeader>
@@ -158,65 +158,15 @@ export function CreateForm({ block, collections, shop, defaultCollection, forceH
           </Step>
 
           <Step title={block.step3_title}>
-            <RadioGroup name="package" value={packageId} onValueChange={setPackageId} className="grid gap-3 sm:grid-cols-2">
-              {shop.packages.map((p) => (
-                <Label
-                  key={p.id}
-                  htmlFor={`package-${p.id}`}
-                  className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-2xl border-2 bg-card p-5 leading-normal transition-colors hover:border-primary/50",
-                    packageId === String(p.id) && "border-primary bg-accent/40",
-                  )}
-                >
-                  <RadioGroupItem id={`package-${p.id}`} value={String(p.id)} className="mt-1" />
-                  <span className="flex-1">
-                    <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-                      <span className="font-display text-lg font-semibold">{p.name}</span>
-                      <span className="font-extrabold text-primary">{formatPrice(p.price)}</span>
-                    </span>
-                    {p.description && <span className="mt-1 block text-sm font-normal text-muted-foreground">{p.description}</span>}
-                  </span>
-                </Label>
-              ))}
-            </RadioGroup>
-            <FieldError id="package-error" message={errors.package} />
-
-            {shop.addons.length > 0 && (
-              <div className="space-y-3 pt-2">
-                <h3 className="flex items-center gap-2 font-display text-xl font-semibold">
-                  <SparklesIcon className="size-5 text-sun" /> {block.addons_title}
-                </h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {shop.addons.map((a) => {
-                    const included = !!pkg?.includes_addons;
-                    const checked = included || addonIds.includes(String(a.id));
-                    return (
-                      <Label
-                        key={a.id}
-                        htmlFor={`addon-${a.id}`}
-                        data-disabled={included}
-                        className="flex cursor-pointer items-center gap-3 rounded-xl border-2 bg-card px-4 py-3 font-semibold capitalize"
-                      >
-                        <Checkbox
-                          id={`addon-${a.id}`}
-                          name="addons"
-                          value={String(a.id)}
-                          checked={checked}
-                          disabled={included}
-                          onCheckedChange={(v) =>
-                            setAddonIds((ids) => (v ? [...ids, String(a.id)] : ids.filter((x) => x !== String(a.id))))
-                          }
-                        />
-                        <span className="flex-1">{a.name}</span>
-                        <span className="text-sm font-bold text-muted-foreground normal-case">
-                          {included ? "Incluido" : formatPrice(a.price)}
-                        </span>
-                      </Label>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            <PackagePicker
+              shop={shop}
+              packageId={packageId}
+              onPackageChange={setPackageId}
+              addonIds={addonIds}
+              onAddonsChange={setAddonIds}
+              addonsTitle={block.addons_title}
+              error={errors.package}
+            />
           </Step>
         </div>
 
@@ -290,5 +240,83 @@ export function CreateForm({ block, collections, shop, defaultCollection, forceH
         </aside>
       </Form>
     </section>
+  );
+}
+
+type PackagePickerProps = {
+  shop: Shop;
+  packageId: string;
+  onPackageChange: (id: string) => void;
+  addonIds: string[];
+  onAddonsChange: React.Dispatch<React.SetStateAction<string[]>>;
+  addonsTitle: string | null;
+  error?: string;
+};
+
+/** Paquetes y complementos (lo usan el formulario y el creador de muñecos) */
+export function PackagePicker({ shop, packageId, onPackageChange, addonIds, onAddonsChange, addonsTitle, error }: PackagePickerProps) {
+  const pkg = shop.packages.find((p) => String(p.id) === packageId);
+  return (
+    <>
+      <RadioGroup name="package" value={packageId} onValueChange={onPackageChange} className="grid gap-3 sm:grid-cols-2">
+        {shop.packages.map((p) => (
+          <Label
+            key={p.id}
+            htmlFor={`package-${p.id}`}
+            className={cn(
+              "flex cursor-pointer items-start gap-3 rounded-2xl border-2 bg-card p-5 leading-normal transition-colors hover:border-primary/50",
+              packageId === String(p.id) && "border-primary bg-accent/40",
+            )}
+          >
+            <RadioGroupItem id={`package-${p.id}`} value={String(p.id)} className="mt-1" />
+            <span className="flex-1">
+              <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <span className="font-display text-lg font-semibold">{p.name}</span>
+                <span className="font-extrabold text-primary">{formatPrice(p.price)}</span>
+              </span>
+              {p.description && <span className="mt-1 block text-sm font-normal text-muted-foreground">{p.description}</span>}
+            </span>
+          </Label>
+        ))}
+      </RadioGroup>
+      <FieldError id="package-error" message={error} />
+
+      {shop.addons.length > 0 && (
+        <div className="space-y-3 pt-2">
+          <h3 className="flex items-center gap-2 font-display text-xl font-semibold">
+            <SparklesIcon className="size-5 text-sun" /> {addonsTitle}
+          </h3>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {shop.addons.map((a) => {
+              const included = !!pkg?.includes_addons;
+              const checked = included || addonIds.includes(String(a.id));
+              return (
+                <Label
+                  key={a.id}
+                  htmlFor={`addon-${a.id}`}
+                  data-disabled={included}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border-2 bg-card px-4 py-3 font-semibold capitalize"
+                >
+                  <Checkbox
+                    id={`addon-${a.id}`}
+                    name="addons"
+                    value={String(a.id)}
+                    checked={checked}
+                    disabled={included}
+                    onCheckedChange={(v) =>
+                      onAddonsChange((ids: string[]) => (v ? [...ids, String(a.id)] : ids.filter((x) => x !== String(a.id))))
+                    }
+                  />
+                  <span className="flex-1">{a.name}</span>
+                  <span className="text-sm font-bold text-muted-foreground normal-case">
+                    {included ? "Incluido" : formatPrice(a.price)}
+                  </span>
+                </Label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

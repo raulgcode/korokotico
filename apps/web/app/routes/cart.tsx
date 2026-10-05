@@ -15,6 +15,7 @@ import { getRequestItems, getShop } from "~/lib/directus.server";
 import { checkout, removeFromCart, type CheckoutErrors } from "~/lib/orders.server";
 import { rootData, seo } from "~/lib/seo";
 import { getCart } from "~/lib/session.server";
+import { assetUrl } from "~/lib/assets";
 import { cn, formatPrice } from "~/lib/utils";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -95,9 +96,12 @@ export default function Cart({ loaderData, actionData }: Route.ComponentProps) {
               {items.map((item) => (
                 <Card key={item.id} className="gap-3 border-2 shadow-none">
                   <CardHeader className="flex flex-row items-start justify-between gap-4">
-                    <div>
+                    {item.design_image && (
+                      <img src={assetUrl(item.design_image, { width: 240 })} alt={`Diseño de ${item.character_name}`} className="h-28 w-20 shrink-0 rounded-xl bg-accent/40 object-contain" />
+                    )}
+                    <div className="flex-1">
                       <CardTitle className="text-2xl">{item.character_name}</CardTitle>
-                      <p className="text-sm font-semibold text-primary">{item.collection?.title}</p>
+                      <p className="text-sm font-semibold text-primary">{item.source === "creador" ? "Diseñado en el creador" : item.collection?.title}</p>
                     </div>
                     <p className="font-display text-xl font-semibold whitespace-nowrap">{formatPrice(item.subtotal)}</p>
                   </CardHeader>
@@ -108,6 +112,9 @@ export default function Cart({ loaderData, actionData }: Route.ComponentProps) {
                       {!!item.addons?.length && <span>· {item.addons.join(", ")}</span>}
                       <span>· {item.units} {item.units === 1 ? "unidad" : "unidades"}</span>
                     </p>
+                    {!!item.design_parts?.length && (
+                      <p className="text-muted-foreground">{item.design_parts.map((p) => p.name).join(" · ")}</p>
+                    )}
                     {item.idea && <p className="line-clamp-3 text-muted-foreground">{item.idea}</p>}
                     {!!item.references?.length && (
                       <p className="text-xs text-muted-foreground">📎 {item.references.length} referencia(s) adjunta(s)</p>

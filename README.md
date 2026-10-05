@@ -20,6 +20,8 @@ apps/
 - **Colecciones**: se publican en `/colecciones/<slug>` con su propio formulario.
 - **Paquetes, complementos y zonas de envío**: precios del formulario y del carrito.
 - **Solicitudes**: lo que envían los clientes desde el carrito, con sus personajes y referencias (privadas).
+- **Creador de muñecos**: tipos de pieza (cuerpo, ojos, boca, cejas, cabello, ropa, zapatos, accesorios) y sus piezas.
+  Ver «Creador de muñecos» más abajo.
 
 ## Desarrollo local
 
@@ -57,6 +59,24 @@ Los cambios se ven en la web en unos 30 segundos, sin volver a desplegar. Los te
 
 El tema solo define colores y tipografías. El logo, el símbolo (favicon) y las imágenes de cada bloque se cambian en
 Directus: **Ajustes del sitio → Logo / Símbolo**, y en cada página, en la imagen del bloque (Portada, Historia, etc.).
+
+## Creador de muñecos
+
+Es una función aparte del formulario de «Crea tu personaje», que sigue igual. El cliente arma el muñeco pieza por pieza,
+revisa la imagen final y la agrega al mismo carrito.
+
+- **Piezas** (`Creador de muñecos → Piezas`): cada pieza es un PNG transparente **del mismo tamaño que el lienzo**
+  (1000 × 1400 px por defecto) con la pieza ya dibujada en su lugar. Así cada pieza cae sola en su posición.
+  Opcional: miniatura para el selector, precio extra y «elegida al empezar».
+- **Tipos de pieza**: nombre, capa (las más altas se dibujan encima), si es obligatorio y si permite varias.
+- **Página**: el seed crea `/disena-tu-muneco` en **borrador**. Publícala cuando las piezas estén listas. El bloque es
+  «Formulario: crear personaje» en modo **Creador de muñecos**; ahí se cambian los textos y el tamaño del lienzo.
+- **Precio**: paquete + complementos + piezas con precio extra, calculado de nuevo en el servidor.
+- **Solicitudes**: cada personaje del creador guarda la imagen final (carpeta «Diseños de clientes») y la lista de piezas.
+
+Para probar en local: `pnpm --filter cms seed -- --demo-parts` sube piezas de ejemplo y publica la página.
+
+Directus sin licencia admite 25 colecciones (sin contar carpetas) y hoy se usan las 25.
 
 ## SEO
 

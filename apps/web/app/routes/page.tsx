@@ -1,10 +1,10 @@
 import { data } from "react-router";
 import type { Route } from "./+types/page";
 import { BlockRenderer } from "~/components/blocks/block-renderer";
-import { getCollections, getPage, getShop } from "~/lib/directus.server";
-import { addToCart } from "~/lib/orders.server";
+import { getCollections, getDollParts, getPage, getShop } from "~/lib/directus.server";
+import { handleCreateAction } from "~/lib/orders.server";
 import { breadcrumbJsonLd, organizationJsonLd, rootData, seo } from "~/lib/seo";
-import type { CatalogCollection, Shop } from "~/lib/types";
+import type { CatalogCollection, DollPartType, Shop } from "~/lib/types";
 
 function slugFrom(params: Record<string, string | undefined>) {
   return (params["*"] ?? "").replace(/^\/+|\/+$/g, "") || "inicio";
@@ -20,19 +20,21 @@ export async function loader({ params }: Route.LoaderArgs) {
 
   const kinds = new Set((page.blocks ?? []).map((b) => b.collection));
   const needsCollections = kinds.has("block_collections") || kinds.has("block_create_form");
-  const [collections, shop] = await Promise.all([
+  const hasBuilder = (page.blocks ?? []).some((b) => b.collection === "block_create_form" && b.item?.mode === "creador");
+  const [collections, shop, dollParts] = await Promise.all([
     needsCollections ? getCollections() : Promise.resolve([] as CatalogCollection[]),
     kinds.has("block_create_form") ? getShop() : Promise.resolve(null as Shop | null),
+    hasBuilder ? getDollParts() : Promise.resolve([] as DollPartType[]),
   ]);
 
   return data(
-    { page, collections, shop },
+    { page, collections, shop, dollParts },
     { headers: { "Cache-Control": "public, max-age=0, s-maxage=60, stale-while-revalidate=300" } },
   );
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  return addToCart(request);
+  return handleCreateAction(request);
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
@@ -97,6 +99,7 @@ export default function CmsPage({ loaderData, matches }: Route.ComponentProps) {
       settings={root.settings}
       collections={loaderData.collections}
       shop={loaderData.shop}
+      dollParts={loaderData.dollParts}
     />
   );
 }

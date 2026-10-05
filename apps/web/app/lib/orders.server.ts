@@ -1,7 +1,7 @@
 import { data, redirect } from "react-router";
-import { directus, getReferencesFolder, getShop, uploadFile } from "./directus.server";
+import { directus, getDesignsFolder, getDollParts, getReferencesFolder, getShop, uploadFile } from "./directus.server";
 import { getCart, sessionStorage } from "./session.server";
-import type { ShippingZone } from "./types";
+import type { DesignPart, Shop, ShippingZone } from "./types";
 
 const MAX_FILE = 10 * 1024 * 1024;
 const MAX_TOTAL = 20 * 1024 * 1024;
@@ -11,15 +11,39 @@ export type CreateErrors = Partial<Record<"collection" | "character_name" | "ide
 
 const text = (form: FormData, key: string, max = 500) => String(form.get(key) ?? "").trim().slice(0, max);
 
-/** Acción del formulario «crear personaje»: guarda el personaje en Directus y lo agrega al carrito */
-export async function addToCart(request: Request) {
-  const form = await request.formData();
-  const { packages, addons } = await getShop();
-
-  const collection = Number(form.get("collection"));
+/** Paquete, complementos y unidades elegidos (precios siempre desde el CMS) */
+function choosePackage(form: FormData, { packages, addons }: Pick<Shop, "packages" | "addons">) {
   const pkg = packages.find((p) => p.id === Number(form.get("package")));
   const chosenAddons = pkg?.includes_addons ? [] : addons.filter((a) => form.getAll("addons").includes(String(a.id)));
   const units = Math.min(Math.max(Number(form.get("units")) || 1, 1), 20);
+  const addonNames = pkg?.includes_addons ? addons.map((a) => a.name) : chosenAddons.map((a) => a.name);
+  const price = (pkg?.price ?? 0) + chosenAddons.reduce((s, a) => s + a.price, 0);
+  return { pkg, units, addonNames, price };
+}
+
+async function saveCartItem(request: Request, body: Record<string, unknown>) {
+  const item = await directus<{ id: number }>("/items/request_items", {
+    method: "POST",
+    query: { fields: "id" },
+    body: { status: "en_carrito", ...body },
+  });
+  const { session, items } = await getCart(request);
+  session.set("items", [...items, item.id]);
+  return redirect("/carrito?agregado=1", { headers: { "Set-Cookie": await sessionStorage.commitSession(session) } });
+}
+
+/** Acción de la página: el formulario de idea o el creador de muñecos */
+export async function handleCreateAction(request: Request) {
+  const form = await request.formData();
+  return form.get("intent") === "add-doll" ? addDollToCart(request, form) : addToCart(request, form);
+}
+
+/** Acción del formulario «crear personaje»: guarda el personaje en Directus y lo agrega al carrito */
+async function addToCart(request: Request, form: FormData) {
+  const shop = await getShop();
+
+  const collection = Number(form.get("collection"));
+  const { pkg, units, addonNames, price } = choosePackage(form, shop);
   const values = {
     character_name: text(form, "character_name", 120),
     colors: text(form, "colors", 200),
@@ -40,27 +64,73 @@ export async function addToCart(request: Request) {
 
   const folder = await getReferencesFolder();
   const uploaded = await Promise.all(files.map((f) => uploadFile(f, folder)));
-  const unitPrice = pkg!.price + chosenAddons.reduce((s, a) => s + a.price, 0);
 
-  const item = await directus<{ id: number }>("/items/request_items", {
-    method: "POST",
-    query: { fields: "id" },
-    body: {
-      status: "en_carrito",
-      collection,
-      package: pkg!.id,
-      addons: pkg!.includes_addons ? addons.map((a) => a.name) : chosenAddons.map((a) => a.name),
-      units,
-      unit_price: unitPrice,
-      subtotal: unitPrice * units,
-      ...values,
-      references: { create: uploaded.map((f) => ({ directus_files_id: f.id })) },
-    },
+  return saveCartItem(request, {
+    source: "formulario",
+    collection,
+    package: pkg!.id,
+    addons: addonNames,
+    units,
+    unit_price: price,
+    subtotal: price * units,
+    ...values,
+    references: { create: uploaded.map((f) => ({ directus_files_id: f.id })) },
   });
+}
 
-  const { session, items } = await getCart(request);
-  session.set("items", [...items, item.id]);
-  return redirect("/carrito?agregado=1", { headers: { "Set-Cookie": await sessionStorage.commitSession(session) } });
+export type DollErrors = Partial<Record<"parts" | "character_name" | "package" | "design" | "form", string>>;
+
+const MAX_DESIGN = 8 * 1024 * 1024;
+
+/**
+ * Acción del creador de muñecos: valida las piezas contra el CMS, calcula el precio en el servidor
+ * y guarda la imagen final que armó el navegador.
+ */
+async function addDollToCart(request: Request, form: FormData) {
+  const [shop, types] = await Promise.all([getShop(), getDollParts()]);
+  const { pkg, units, addonNames, price } = choosePackage(form, shop);
+  const values = {
+    character_name: text(form, "character_name", 120),
+    idea: text(form, "idea", 2000),
+  };
+  const chosenIds = new Set(form.getAll("parts").map(Number));
+  const design = form.get("design");
+
+  const errors: DollErrors = {};
+  const parts: DesignPart[] = [];
+  for (const type of types) {
+    const chosen = type.parts.filter((p) => chosenIds.has(p.id));
+    if (type.required && !chosen.length) errors.parts = `Elige ${type.name.toLowerCase()} para tu muñeco.`;
+    if (!type.multiple && chosen.length > 1) errors.parts = `Solo puedes elegir una opción de ${type.name.toLowerCase()}.`;
+    for (const p of chosen) parts.push({ id: p.id, type: type.name, name: p.name, price: p.price ?? 0 });
+  }
+  if (parts.length !== chosenIds.size) errors.parts = "Alguna pieza ya no está disponible. Revisa tu diseño.";
+  if (!values.character_name) errors.character_name = "Cuéntanos cómo se llamará tu muñeco.";
+  if (!pkg) errors.package = "Elige un paquete.";
+  if (!(design instanceof File) || !design.size || design.type !== "image/png" || design.size > MAX_DESIGN) {
+    errors.design = "No pudimos generar la imagen de tu diseño. Inténtalo de nuevo.";
+  }
+  if (Object.keys(errors).length) return data({ errors }, { status: 400 });
+
+  const image = await uploadFile(
+    new File([design as File], `diseno-${values.character_name.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "muneco"}.png`, { type: "image/png" }),
+    await getDesignsFolder(),
+  );
+  const partsPrice = parts.reduce((s, p) => s + p.price, 0);
+  const unitPrice = price + partsPrice;
+
+  return saveCartItem(request, {
+    source: "creador",
+    package: pkg!.id,
+    addons: addonNames,
+    units,
+    unit_price: unitPrice,
+    subtotal: unitPrice * units,
+    parts_price: partsPrice,
+    design_parts: parts,
+    design_image: image.id,
+    ...values,
+  });
 }
 
 export async function removeFromCart(request: Request, id: number) {

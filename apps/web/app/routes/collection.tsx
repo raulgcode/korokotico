@@ -6,7 +6,7 @@ import { CmsImage } from "~/components/cms-image";
 import { SmartLink } from "~/components/smart-link";
 import { Badge } from "~/components/ui/badge";
 import { getCollection, getCollections, getCreateFormBlock, getShop } from "~/lib/directus.server";
-import { addToCart } from "~/lib/orders.server";
+import { handleCreateAction } from "~/lib/orders.server";
 import { breadcrumbJsonLd, rootData, seo } from "~/lib/seo";
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -24,7 +24,7 @@ export async function loader({ params }: Route.LoaderArgs) {
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  return addToCart(request);
+  return handleCreateAction(request);
 }
 
 export function headers({ loaderHeaders }: Route.HeadersArgs) {
