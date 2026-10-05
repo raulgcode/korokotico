@@ -111,6 +111,7 @@ export const f = {
     type: "alias",
     meta: { special: ["alias", "no-data"], interface: "presentation-divider", options: { title }, width: "full" },
   }),
+  float: (field, label, meta = {}) => base(field, "float", label, { interface: "input", ...meta }),
   json: (field, label, meta = {}) => base(field, "json", label, { interface: "input-code", special: ["cast-json"], options: { language: "json" }, ...meta }),
   timestamp: (field, label, special) =>
     base(field, "timestamp", label, { interface: "datetime", special: [special], readonly: true, hidden: false, width: "half", display: "datetime", display_options: { relative: true } }),
@@ -128,6 +129,13 @@ const seoFields = () => [
   f.string("seo_title", "Título SEO", { note: "Aparece en Google y en la pestaña. Si está vacío se usa el título." }),
   f.text("seo_description", "Descripción SEO", { note: "Ideal entre 120 y 160 caracteres." }),
   f.image("og_image", "Imagen para compartir (Open Graph)", { note: "1200 × 630 px recomendado." }),
+];
+
+const positionFields = (note) => [
+  f.divider("position_divider", "Posición en el lienzo (%)"),
+  f.float("pos_x", "Izquierda (%)", { width: "half", note }),
+  f.float("pos_y", "Arriba (%)", { width: "half" }),
+  f.float("pos_width", "Ancho (%)", { width: "half", note: "El alto sale de la proporción de la imagen" }),
 ];
 
 // Bloques del constructor de páginas
@@ -345,6 +353,7 @@ export const COLLECTIONS = [
       f.integer("layer", "Capa", { ...half, required: true, note: "Las capas más altas se dibujan encima (cuerpo 10, ojos 40, cabello 60…)" }, { default_value: 10 }),
       f.boolean("required", "Obligatorio", false, { ...half, note: "El cliente tiene que elegir una pieza de este tipo" }),
       f.boolean("multiple", "Permite varias", false, { ...half, note: "Ej: accesorios" }),
+      ...positionFields("Dónde va este tipo de pieza. Vacío = la imagen ocupa todo el lienzo. Usa ?ajustar=1 en la página del creador para medirlo."),
       f.alias("parts", "Piezas", ["o2m"], "list-o2m", { options: { template: "{{name}}", enableSelect: false } }),
     ],
   },
@@ -365,12 +374,13 @@ export const COLLECTIONS = [
       f.string("name", "Nombre", { ...half, required: true }),
       f.image("image", "Imagen de la capa", {
         required: true,
-        note: "PNG transparente del mismo tamaño que el lienzo, con la pieza ya dibujada en su lugar.",
+        note: "PNG o SVG transparente. Puede venir recortado: se ubica con la posición del tipo (o la de esta pieza).",
       }),
       f.image("thumbnail", "Miniatura (opcional)", { note: "Imagen pequeña para el selector. Si está vacía se usa la imagen de la capa." }),
       f.integer("price", "Precio extra (₡)", { ...half, note: "0 si no cambia el precio" }, { default_value: 0 }),
       f.integer("layer", "Capa propia (opcional)", { ...half, note: "Solo si esta pieza va en otra capa que su tipo" }),
       f.boolean("is_default", "Elegida al empezar", false, half),
+      ...positionFields("Solo si esta pieza va en otro lugar que su tipo. Vacío = usa la del tipo."),
     ],
   },
 

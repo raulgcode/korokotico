@@ -123,7 +123,10 @@ export type CreateFormBlock = {
   empty_message: string | null;
 } & Link<"process_link">;
 
-export type DollPart = {
+/** Posición en % del lienzo (el alto sale de la proporción de la imagen) */
+export type DollPosition = { pos_x: number | null; pos_y: number | null; pos_width: number | null };
+
+export type DollPart = DollPosition & {
   id: number;
   name: string;
   price: number | null;
@@ -133,7 +136,7 @@ export type DollPart = {
   thumbnail: FileRef | null;
 };
 
-export type DollPartType = {
+export type DollPartType = DollPosition & {
   id: number;
   name: string;
   layer: number;
@@ -142,7 +145,16 @@ export type DollPartType = {
   parts: DollPart[];
 };
 
-export type DesignPart = { id: number; type: string; name: string; price: number };
+export type DesignPart = {
+  id: number;
+  type: string;
+  name: string;
+  price: number;
+  /** Capa final (0 = atrás) */
+  z?: number;
+  /** Posición que eligió el cliente, en % del lienzo */
+  position?: { x: number; y: number; w: number };
+};
 
 export type Block =
   | { id: number; collection: "block_hero"; item: HeroBlock }

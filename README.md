@@ -65,16 +65,21 @@ Directus: **Ajustes del sitio → Logo / Símbolo**, y en cada página, en la im
 Es una función aparte del formulario de «Crea tu personaje», que sigue igual. El cliente arma el muñeco pieza por pieza,
 revisa la imagen final y la agrega al mismo carrito.
 
-- **Piezas** (`Creador de muñecos → Piezas`): cada pieza es un PNG transparente **del mismo tamaño que el lienzo**
-  (1000 × 1400 px por defecto) con la pieza ya dibujada en su lugar. Así cada pieza cae sola en su posición.
-  Opcional: miniatura para el selector, precio extra y «elegida al empezar».
-- **Tipos de pieza**: nombre, capa (las más altas se dibujan encima), si es obligatorio y si permite varias.
-- **Página**: el seed crea `/disena-tu-muneco` en **borrador**. Publícala cuando las piezas estén listas. El bloque es
+- **Piezas** (`Creador de muñecos → Piezas`): PNG o SVG transparente. Puede venir recortado (solo los ojos, solo el cabello…).
+  Opcional: miniatura para el selector, precio extra, «elegida al empezar» y una posición propia.
+- **Tipos de pieza**: nombre, capa (las más altas se dibujan encima), si es obligatorio, si permite varias y **dónde va**
+  (izquierda, arriba y ancho en % del lienzo; el alto sale de la proporción de la imagen). Sin posición, la imagen ocupa
+  todo el lienzo (lo normal para el cuerpo). Para medirla abre la página del creador con `?ajustar=1`
+  (ej. `/disena-tu-muneco?ajustar=1`), arrastra la pieza y copia los valores a Directus.
+- **El cliente** puede mover y cambiar el tamaño de cada pieza, traerla adelante o mandarla atrás. La solicitud guarda la
+  imagen final y, en «Piezas elegidas», la capa y la posición que eligió.
+- **Página**: el seed crea `/disena-tu-muneco` publicada y la agrega al menú principal (sin piezas muestra un aviso). El bloque es
   «Formulario: crear personaje» en modo **Creador de muñecos**; ahí se cambian los textos y el tamaño del lienzo.
 - **Precio**: paquete + complementos + piezas con precio extra, calculado de nuevo en el servidor.
 - **Solicitudes**: cada personaje del creador guarda la imagen final (carpeta «Diseños de clientes») y la lista de piezas.
 
-Para probar en local: `pnpm --filter cms seed -- --demo-parts` sube piezas de ejemplo y publica la página.
+Migración en local: `pnpm cms:migrate` (o `pnpm cms:migrate:demo` para subir piezas de ejemplo). En producción corre
+sola dentro de `pnpm release`.
 
 Directus sin licencia admite 25 colecciones (sin contar carpetas) y hoy se usan las 25.
 

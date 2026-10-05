@@ -166,7 +166,7 @@ export async function getDollParts() {
   const types = await directus<DollPartType[]>("/items/doll_part_types", {
     query: {
       "filter[status][_eq]": "published",
-      fields: `id,name,layer,required,multiple,parts.id,parts.name,parts.price,parts.layer,parts.is_default,${image("image")},${image("thumbnail")}`,
+      fields: `id,name,layer,required,multiple,pos_x,pos_y,pos_width,parts.id,parts.name,parts.price,parts.layer,parts.is_default,parts.pos_x,parts.pos_y,parts.pos_width,${image("image")},${image("thumbnail")}`,
       "deep[parts][_filter][status][_eq]": "published",
       "deep[parts][_sort]": "sort",
       "deep[parts][_limit]": -1,

@@ -12,7 +12,7 @@ type Props = { settings: SiteSettings; menu: MenuItem[]; cartCount: number };
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   cn(
-    "relative rounded-full px-4 py-2 text-[15px] font-bold transition-colors hover:text-primary",
+    "relative rounded-full px-3 py-2 text-[15px] font-bold whitespace-nowrap xl:px-4 transition-colors hover:text-primary",
     isActive && "text-primary after:absolute after:inset-x-4 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-primary",
   );
 
@@ -43,7 +43,7 @@ export function SiteHeader({ settings, menu, cartCount }: Props) {
         <div className="container-k flex h-16 items-center justify-between gap-4 sm:h-20">
           <Logo settings={settings} />
 
-          <nav aria-label="Principal" className="hidden lg:block">
+          <nav aria-label="Principal" className="hidden xl:block">
             <ul className="flex items-center gap-1">
               {menu.map((item) => (
                 <li key={item.url}>
@@ -73,7 +73,7 @@ export function SiteHeader({ settings, menu, cartCount }: Props) {
             </Button>
             <Sheet open={open} onOpenChange={setOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menú">
+                <Button variant="ghost" size="icon" className="xl:hidden" aria-label="Abrir menú">
                   <MenuIcon className="size-6" />
                 </Button>
               </SheetTrigger>

@@ -1,7 +1,21 @@
-import { ArrowLeftIcon, ArrowRightIcon, BanIcon, CheckIcon, MinusIcon, PlusIcon, RulerIcon, ShuffleIcon, Undo2Icon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  BanIcon,
+  BringToFrontIcon,
+  CheckIcon,
+  MinusIcon,
+  MoveIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  RulerIcon,
+  SendToBackIcon,
+  ShuffleIcon,
+  Undo2Icon,
+} from "lucide-react";
 import { Dialog } from "radix-ui";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Form, useActionData, useNavigation, useSubmit } from "react-router";
+import { Form, useActionData, useNavigation, useSearchParams, useSubmit } from "react-router";
 import { SectionHeading } from "~/components/section-heading";
 import { SmartLink } from "~/components/smart-link";
 import { Button } from "~/components/ui/button";
@@ -12,13 +26,18 @@ import { Separator } from "~/components/ui/separator";
 import { Textarea } from "~/components/ui/textarea";
 import { assetUrl } from "~/lib/assets";
 import type { DollErrors } from "~/lib/orders.server";
-import type { CreateFormBlock, DollPart, DollPartType, Shop } from "~/lib/types";
+import type { CreateFormBlock, DollPart, DollPartType, DollPosition, Shop } from "~/lib/types";
 import { cn, formatPrice } from "~/lib/utils";
 import { FieldError, PackagePicker, Step } from "./create-form";
 
 type Props = { block: CreateFormBlock; types: DollPartType[]; shop: Shop };
 type Selection = Record<number, number[]>;
-type Layer = { part: DollPart; type: DollPartType; layer: number };
+/** Posición en % del lienzo; el alto sale de la proporción de la imagen */
+type Box = { x: number; y: number; w: number };
+type Layer = { part: DollPart; type: DollPartType; layer: number; box: Box | null };
+
+const boxOf = (p: DollPosition): Box | null =>
+  p.pos_width ? { x: p.pos_x ?? 0, y: p.pos_y ?? 0, w: p.pos_width } : null;
 
 /** Piezas elegidas al empezar: las marcadas en el CMS, o la primera de cada tipo obligatorio */
 function initialSelection(types: DollPartType[]): Selection {
@@ -44,7 +63,7 @@ function randomSelection(types: DollPartType[]): Selection {
 
 const layerUrl = (part: DollPart, width: number) => assetUrl(part.image, { width, quality: 90 })!;
 
-/** Dibuja las capas en un canvas y devuelve el PNG del diseño final */
+/** Dibuja las capas en un canvas (igual que la vista previa) y devuelve el PNG del diseño final */
 async function composeDesign(layers: Layer[], width: number, height: number, background: string | null) {
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -62,22 +81,108 @@ async function composeDesign(layers: Layer[], width: number, height: number, bac
       return img;
     }),
   );
-  for (const img of images) ctx.drawImage(img, 0, 0, width, height);
+  layers.forEach(({ box }, i) => {
+    const img = images[i];
+    const ratio = img.naturalWidth && img.naturalHeight ? img.naturalHeight / img.naturalWidth : height / width;
+    if (box) {
+      const w = (box.w / 100) * width;
+      ctx.drawImage(img, (box.x / 100) * width, (box.y / 100) * height, w, w * ratio);
+    } else {
+      // Sin posición: la imagen ocupa el lienzo sin deformarse
+      const scale = Math.min(width, height / ratio);
+      const w = scale;
+      const h = scale * ratio;
+      ctx.drawImage(img, (width - w) / 2, (height - h) / 2, w, h);
+    }
+  });
   return new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob"))), "image/png"));
 }
 
-function DollPreview({ layers, width, height, background, className }: { layers: Layer[]; width: number; height: number; background: string | null; className?: string }) {
+/** Caja que ocupa una imagen sin posición (encajada en el lienzo sin deformarse) */
+function fittedBox(img: HTMLImageElement, width: number, height: number): Box {
+  const ratio = img.naturalWidth && img.naturalHeight ? img.naturalHeight / img.naturalWidth : height / width;
+  const canvasRatio = height / width;
+  if (ratio <= canvasRatio) return { x: 0, y: ((1 - ratio / canvasRatio) / 2) * 100, w: 100 };
+  const w = (canvasRatio / ratio) * 100;
+  return { x: (100 - w) / 2, y: 0, w };
+}
+
+type Editing = { partId: number; onChange: (box: Box) => void };
+
+function DollPreview({
+  layers,
+  width,
+  height,
+  background,
+  className,
+  editing,
+}: {
+  layers: Layer[];
+  width: number;
+  height: number;
+  background: string | null;
+  className?: string;
+  editing?: Editing;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Arrastra la pieza elegida para moverla y la esquina para cambiar su tamaño
+  function startDrag(event: React.PointerEvent<HTMLElement>, box: Box | null, mode: "move" | "resize") {
+    if (!editing || !ref.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const img = (event.currentTarget.closest("[data-layer]") as HTMLElement | null)?.querySelector("img");
+    const from = box ?? (img ? fittedBox(img, width, height) : { x: 0, y: 0, w: 100 });
+    const rect = ref.current.getBoundingClientRect();
+    const start = { x: event.clientX, y: event.clientY };
+    const round = (n: number) => Math.round(n * 10) / 10;
+    const move = (e: PointerEvent) => {
+      const dx = ((e.clientX - start.x) / rect.width) * 100;
+      const dy = ((e.clientY - start.y) / rect.height) * 100;
+      editing.onChange(
+        mode === "move" ? { ...from, x: round(from.x + dx), y: round(from.y + dy) } : { ...from, w: round(Math.max(3, from.w + dx)) },
+      );
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   return (
-    <div className={cn("relative mx-auto overflow-hidden rounded-[1.75rem]", className)} style={{ aspectRatio: `${width} / ${height}`, background: background ?? undefined }}>
-      {layers.map(({ part }) => (
-        <img
-          key={part.id}
-          src={layerUrl(part, width)}
-          alt=""
-          draggable={false}
-          className="absolute inset-0 size-full object-contain select-none"
-        />
-      ))}
+    <div
+      ref={ref}
+      className={cn("relative mx-auto overflow-hidden rounded-[1.75rem]", className)}
+      style={{ aspectRatio: `${width} / ${height}`, background: background ?? undefined }}
+    >
+      {layers.map(({ part, box }) => {
+        const active = editing?.partId === part.id;
+        return (
+          <div
+            key={part.id}
+            data-layer
+            className={cn("absolute", !box && "inset-0", active ? "cursor-move touch-none outline-2 outline-primary outline-dashed" : "pointer-events-none")}
+            style={box ? { left: `${box.x}%`, top: `${box.y}%`, width: `${box.w}%` } : undefined}
+            onPointerDown={active ? (e) => startDrag(e, box, "move") : undefined}
+          >
+            <img
+              src={layerUrl(part, width)}
+              alt=""
+              draggable={false}
+              className={cn("select-none", box ? "block h-auto w-full" : "size-full object-contain")}
+            />
+            {active && (
+              <span
+                aria-hidden
+                className="absolute -right-2.5 -bottom-2.5 size-5 cursor-nwse-resize touch-none rounded-full border-2 border-background bg-primary shadow"
+                onPointerDown={(e) => startDrag(e, box, "resize")}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -104,6 +209,14 @@ export function DollBuilder({ block, types, shop }: Props) {
   const [composing, setComposing] = useState(false);
   const [clientErrors, setClientErrors] = useState<DollErrors>({});
   const formRef = useRef<HTMLFormElement>(null);
+  // ?ajustar=1: herramienta para medir dónde va cada tipo de pieza y copiarlo a Directus
+  const [searchParams] = useSearchParams();
+  const adjusting = searchParams.has("ajustar");
+  const [adjusted, setAdjusted] = useState<Record<number, Box>>({});
+  // Lo que el cliente mueve o agranda, y el orden de capas que elige (por pieza)
+  const [custom, setCustom] = useState<Record<number, Box>>({});
+  const [order, setOrder] = useState<Record<number, number>>({});
+  const [editingPart, setEditingPart] = useState<number | null>(null);
   const errors = { ...serverErrors, ...clientErrors };
 
   // Si el servidor rechaza el diseño, se cierra la revisión para mostrar el error
@@ -118,12 +231,15 @@ export function DollBuilder({ block, types, shop }: Props) {
         .flatMap((type) =>
           (selection[type.id] ?? []).flatMap((id) => {
             const part = type.parts.find((p) => p.id === id);
-            return part ? [{ part, type, layer: part.layer ?? type.layer }] : [];
+            if (!part) return [];
+            const box = (adjusting ? null : custom[part.id]) ?? boxOf(part) ?? adjusted[type.id] ?? boxOf(type);
+            return [{ part, type, layer: order[part.id] ?? part.layer ?? type.layer, box }];
           }),
         )
         .sort((a, b) => a.layer - b.layer),
-    [types, selection],
+    [types, selection, adjusted, custom, order, adjusting],
   );
+  const editingLayer = layers.find((l) => l.part.id === editingPart) ?? null;
 
   const pkg = shop.packages.find((p) => String(p.id) === packageId);
   const partsPrice = layers.reduce((s, l) => s + (l.part.price ?? 0), 0);
@@ -154,6 +270,18 @@ export function DollBuilder({ block, types, shop }: Props) {
     else if (type.multiple) ids = current.includes(part.id) ? current.filter((id) => id !== part.id) : [...current, part.id];
     else ids = current.includes(part.id) && !type.required ? [] : [part.id];
     update({ ...selection, [type.id]: ids });
+    setEditingPart(part && ids.includes(part.id) ? part.id : null);
+  }
+
+  /** Mueve la pieza una capa adelante (+1) o atrás (-1) intercambiándola con su vecina */
+  function moveLayer(partId: number, direction: 1 | -1) {
+    const index = layers.findIndex((l) => l.part.id === partId);
+    const other = layers[index + direction];
+    if (index < 0 || !other) return;
+    const current = layers[index];
+    const a = current.layer;
+    const b = other.layer === a ? a + direction * 0.5 : other.layer;
+    setOrder((o) => ({ ...o, [current.part.id]: b, [other.part.id]: a }));
   }
 
   async function openReview(event: React.FormEvent<HTMLFormElement>) {
@@ -199,12 +327,32 @@ export function DollBuilder({ block, types, shop }: Props) {
         {layers.map(({ part }) => (
           <input key={part.id} type="hidden" name="parts" value={part.id} />
         ))}
+        <input
+          type="hidden"
+          name="layout"
+          value={JSON.stringify(layers.map(({ part, box }, z) => ({ id: part.id, z, ...(custom[part.id] && box ? box : {}) })))}
+        />
 
         {/* Vista previa: fija arriba en el celular, a la izquierda en escritorio */}
         <aside className="sticky top-16 z-20 -mx-4 min-w-0 bg-background/95 px-4 py-2 backdrop-blur lg:top-28 lg:mx-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
           <Card className="stitch gap-4 border-0 bg-accent/60 py-3 shadow-none outline-primary/30 lg:py-6">
             <CardContent className="flex items-center gap-4 px-4 lg:block lg:space-y-4 lg:px-6">
-              <DollPreview layers={layers} width={width} height={height} background={background} className="mx-0 h-[26vh] shrink-0 lg:mx-auto lg:h-auto lg:w-full" />
+              <DollPreview
+                layers={layers}
+                width={width}
+                height={height}
+                background={background}
+                className="mx-0 h-[26vh] shrink-0 lg:mx-auto lg:h-auto lg:w-full"
+                editing={
+                  adjusting
+                    ? chosen[0]
+                      ? { partId: chosen[0], onChange: (box) => setAdjusted((a) => ({ ...a, [type.id]: box })) }
+                      : undefined
+                    : editingLayer
+                      ? { partId: editingLayer.part.id, onChange: (box) => setCustom((c) => ({ ...c, [editingLayer.part.id]: box })) }
+                      : undefined
+                }
+              />
               <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-2">
                 <div>
                   <p className="font-display text-lg leading-tight font-semibold">{name || "Tu muñeco"}</p>
@@ -227,6 +375,7 @@ export function DollBuilder({ block, types, shop }: Props) {
         </aside>
 
         <div className="min-w-0 space-y-6">
+          {adjusting && <AdjustPanel type={type} box={adjusted[type.id] ?? boxOf(type)} onChange={(box) => setAdjusted((a) => ({ ...a, [type.id]: box }))} />}
           {errors.form && <p className="rounded-xl bg-destructive/10 p-4 font-semibold text-destructive">{errors.form}</p>}
 
           <Step title={block.step1_title}>
@@ -301,6 +450,19 @@ export function DollBuilder({ block, types, shop }: Props) {
               })}
             </div>
             {type.multiple && <p className="text-xs text-muted-foreground">Puedes elegir varios.</p>}
+
+            {!adjusting && layers.length > 0 && (
+              <LayerEditor
+                layers={layers}
+                editing={editingLayer}
+                onSelect={setEditingPart}
+                onMove={moveLayer}
+                onReset={(partId) => {
+                  setCustom(({ [partId]: _, ...rest }) => rest);
+                  setOrder(({ [partId]: _, ...rest }) => rest);
+                }}
+              />
+            )}
             <FieldError id="parts-error" message={errors.parts} />
           </Step>
 
@@ -447,5 +609,103 @@ function PriceSummary({ pkgName, base, partsPrice, units }: { pkgName?: string; 
         <dd className="font-display text-2xl font-semibold text-primary">{formatPrice((base + partsPrice) * units)}</dd>
       </div>
     </dl>
+  );
+}
+
+/** Herramientas del cliente: elegir una pieza, traerla adelante, mandarla atrás o restablecerla */
+function LayerEditor({
+  layers,
+  editing,
+  onSelect,
+  onMove,
+  onReset,
+}: {
+  layers: Layer[];
+  editing: Layer | null;
+  onSelect: (partId: number | null) => void;
+  onMove: (partId: number, direction: 1 | -1) => void;
+  onReset: (partId: number) => void;
+}) {
+  const index = editing ? layers.indexOf(editing) : -1;
+  return (
+    <div className="space-y-3 rounded-2xl bg-accent/40 p-4">
+      <p className="flex items-center gap-2 text-sm font-bold">
+        <MoveIcon className="size-4 text-primary" /> Ajusta cada pieza
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {[...layers].reverse().map((l) => (
+          <button
+            key={l.part.id}
+            type="button"
+            onClick={() => onSelect(editing?.part.id === l.part.id ? null : l.part.id)}
+            aria-pressed={editing?.part.id === l.part.id}
+            className={cn(
+              "rounded-full border-2 bg-card px-3 py-1 text-xs font-bold",
+              editing?.part.id === l.part.id ? "border-primary text-primary" : "hover:border-primary/50",
+            )}
+          >
+            {l.type.name}: {l.part.name}
+          </button>
+        ))}
+      </div>
+      {editing ? (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Arrastra «{editing.part.name}» en la vista previa para moverla y usa el punto de la esquina para cambiar su tamaño.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" disabled={index >= layers.length - 1} onClick={() => onMove(editing.part.id, 1)}>
+              <BringToFrontIcon /> Traer adelante
+            </Button>
+            <Button type="button" variant="outline" size="sm" disabled={index <= 0} onClick={() => onMove(editing.part.id, -1)}>
+              <SendToBackIcon /> Enviar atrás
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => onReset(editing.part.id)}>
+              <RotateCcwIcon /> Restablecer
+            </Button>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-muted-foreground">Toca una pieza de la lista para moverla, cambiar su tamaño o su capa.</p>
+      )}
+    </div>
+  );
+}
+
+/** Panel del modo ajuste (?ajustar=1): muestra los valores para copiar en Directus → Tipos de pieza */
+function AdjustPanel({ type, box, onChange }: { type: DollPartType; box: Box | null; onChange: (box: Box) => void }) {
+  return (
+    <div className="space-y-3 rounded-2xl border-2 border-dashed border-primary bg-card p-5 text-sm">
+      <p className="font-bold">Modo ajuste · {type.name}</p>
+      {box ? (
+        <>
+          <p className="text-muted-foreground">
+            Arrastra la pieza en la vista previa para moverla y usa el punto de la esquina para cambiar su ancho. Luego copia estos valores
+            en Directus → Creador de muñecos → Tipos de pieza → {type.name}.
+          </p>
+          <dl className="grid grid-cols-3 gap-2 text-center">
+            {(
+              [
+                ["Izquierda (%)", box.x],
+                ["Arriba (%)", box.y],
+                ["Ancho (%)", box.w],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-accent/50 p-2">
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd className="font-display text-xl font-semibold">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-muted-foreground">Este tipo no tiene posición: sus imágenes ocupan todo el lienzo (lo normal para el cuerpo).</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => onChange({ x: 25, y: 25, w: 50 })}>
+            Darle una posición
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

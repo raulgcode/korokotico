@@ -82,6 +82,28 @@ export type DollErrors = Partial<Record<"parts" | "character_name" | "package" |
 
 const MAX_DESIGN = 8 * 1024 * 1024;
 
+/** Guarda en cada pieza su capa y la posición que eligió el cliente (si la movió) */
+function applyLayout(parts: DesignPart[], raw: string) {
+  let layout: unknown;
+  try {
+    layout = JSON.parse(raw);
+  } catch {
+    return;
+  }
+  if (!Array.isArray(layout)) return;
+  const num = (v: unknown, min: number, max: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : null);
+  for (const entry of layout.slice(0, 50)) {
+    const part = parts.find((p) => p.id === (entry as { id?: unknown })?.id);
+    if (!part) continue;
+    const { z, x, y, w } = entry as Record<string, unknown>;
+    const zi = num(z, 0, 50);
+    if (zi !== null) part.z = zi;
+    const [px, py, pw] = [num(x, -100, 200), num(y, -100, 200), num(w, 1, 300)];
+    if (px !== null && py !== null && pw !== null) part.position = { x: px, y: py, w: pw };
+  }
+  parts.sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
+}
+
 /**
  * Acción del creador de muñecos: valida las piezas contra el CMS, calcula el precio en el servidor
  * y guarda la imagen final que armó el navegador.
@@ -104,6 +126,7 @@ async function addDollToCart(request: Request, form: FormData) {
     if (!type.multiple && chosen.length > 1) errors.parts = `Solo puedes elegir una opción de ${type.name.toLowerCase()}.`;
     for (const p of chosen) parts.push({ id: p.id, type: type.name, name: p.name, price: p.price ?? 0 });
   }
+  applyLayout(parts, String(form.get("layout") ?? ""));
   if (parts.length !== chosenIds.size) errors.parts = "Alguna pieza ya no está disponible. Revisa tu diseño.";
   if (!values.character_name) errors.character_name = "Cuéntanos cómo se llamará tu muñeco.";
   if (!pkg) errors.package = "Elige un paquete.";
