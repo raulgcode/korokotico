@@ -317,6 +317,9 @@ async function ensureDollBuilder(folders) {
     await addMenuLink();
   }
 
+  await ensurePartPositions(types);
+  await ensureParts(types, folders);
+
   if (!DEMO_PARTS) return;
   const count = (await api("GET", "/items/doll_parts?aggregate[count]=*"))[0].count;
   if (Number(count) > 0) return;
@@ -329,6 +332,54 @@ async function ensureDollBuilder(folders) {
     parts.push({ status: "published", sort: i + 1, type: typeId[type], name, image, price, is_default: isDefault });
   }
   await api("POST", "/items/doll_parts", parts);
+}
+
+/** Da posición a los tipos de pieza que no la tienen (no pisa lo que Daniela haya ajustado). */
+async function ensurePartPositions(types) {
+  const current = await api("GET", "/items/doll_part_types?fields=id,name,pos_width&limit=-1");
+  for (const t of current) {
+    const pos = doll.typePositions[t.name];
+    if (!pos || t.pos_width) continue;
+    const [pos_x, pos_y, pos_width] = pos;
+    await api("PATCH", `/items/doll_part_types/${t.id}`, { pos_x, pos_y, pos_width });
+  }
+}
+
+/**
+ * Sube las piezas de Daniela (apps/cms/scripts/parts). Solo agrega las que faltan
+ * (mismo tipo y nombre), así que no duplica ni toca las que ya se editaron en el panel.
+ */
+async function ensureParts(types, folders) {
+  const typeId = Object.fromEntries(types.map((t) => [t.name, t.id]));
+  const existing = await api("GET", "/items/doll_parts?fields=name,type&limit=-1");
+  const have = new Set(existing.map((p) => `${p.type}|${p.name}`));
+  const missing = doll.parts.filter(([type, name]) => typeId[type] && !have.has(`${typeId[type]}|${name}`));
+  if (!missing.length) return;
+  log(`Creador de muñecos: ${missing.length} piezas nuevas`);
+  const sorts = {};
+  for (const p of existing) sorts[p.type] = (sorts[p.type] ?? 0) + 1;
+  const items = [];
+  for (const [type, name, file, isDefault, pos] of missing) {
+    const svg = await readFile(new URL(`./parts/${file}`, import.meta.url));
+    const image = await upload(`pieza-${file}`, svg, folders.parts);
+    const [pos_x, pos_y, pos_width] = pos ?? [null, null, null];
+    const typeHasParts = existing.some((p) => p.type === typeId[type]);
+    sorts[typeId[type]] = (sorts[typeId[type]] ?? 0) + 1;
+    items.push({
+      status: "published",
+      sort: sorts[typeId[type]],
+      type: typeId[type],
+      name,
+      image,
+      price: 0,
+      // Si el tipo ya tenía piezas, no cambia cuál sale elegida al empezar
+      is_default: isDefault && !typeHasParts,
+      pos_x,
+      pos_y,
+      pos_width,
+    });
+  }
+  await api("POST", "/items/doll_parts", items);
 }
 
 async function projectSettings() {

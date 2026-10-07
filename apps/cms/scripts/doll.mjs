@@ -1,5 +1,6 @@
 // Creador de muñecos: tipos de pieza de fábrica, la página del creador y piezas de prueba.
-// Las piezas reales las sube Daniela desde el panel (Creador de muñecos → Piezas).
+// Las piezas de Daniela (apps/cms/scripts/parts) se suben con el seed; luego se editan desde el panel
+// (Creador de muñecos → Piezas).
 
 export const PAGE_SLUG = "disena-tu-muneco";
 
@@ -13,6 +14,102 @@ export const partTypes = [
   ["Cabello", 70, false, false],
   ["Accesorios", 80, false, true],
 ].map(([name, layer, required, multiple], i) => ({ status: "published", sort: i + 1, name, layer, required, multiple }));
+
+// Posición de cada tipo en el lienzo (% de 1000 × 1400), medida con las piezas de Daniela.
+// Solo se escribe si el tipo no tiene posición todavía.
+export const typePositions = {
+  Cuerpo: [10, 3, 80],
+  Ropa: [10, 36, 80],
+  Zapatos: [29, 82, 42],
+  Boca: [45, 31, 10.1],
+  Ojos: [38, 20, 24],
+  Cejas: [38, 16, 24],
+  Cabello: [25.1, 5, 49.9],
+  Accesorios: [33.1, 18.2, 33.7],
+};
+
+/**
+ * Piezas de Daniela (archivos en apps/cms/scripts/parts, vienen recortados).
+ * [tipo, nombre, archivo, elegida al empezar, posición propia [x, y, ancho] o null = la del tipo]
+ */
+export const parts = [
+  ["Cuerpo", "Cuerpo claro", "cuerpo-claro.svg", true, null],
+  ["Cuerpo", "Cuerpo medio", "cuerpo-medio.svg", false, null],
+  ["Cuerpo", "Cuerpo moreno", "cuerpo-moreno.svg", false, null],
+  ["Cuerpo", "Cuerpo moreno claro", "cuerpo-moreno-claro.svg", false, null],
+  ["Ropa", "Camisa y falda lila", "camisa-y-falda-lila.svg", false, null],
+  ["Ropa", "Camiseta verde y short marrón", "camiseta-verde-y-short-marron.svg", false, null],
+  ["Ropa", "Camiseta y shorts azul", "camiseta-y-shorts-azul.svg", true, null],
+  ["Ropa", "Overol", "overol.svg", false, null],
+  ["Ropa", "Overol verde", "overol-verde.svg", false, null],
+  ["Ropa", "Sudadera y pantalón", "sudadera-y-pantalon.svg", false, null],
+  ["Ropa", "Vestido amarillo", "vestido-amarillo.svg", false, null],
+  ["Ropa", "Vestido amarillo claro", "vestido-amarillo-claro.svg", false, null],
+  ["Ropa", "Vestido cuadro rojos", "vestido-cuadro-rojos.svg", false, null],
+  ["Ropa", "Vestido de cerezas", "vestido-de-cerezas.svg", false, null],
+  ["Ropa", "Vestido lila", "vestido-lila.svg", false, null],
+  ["Ropa", "Vestido rosa", "vestido-rosa.svg", false, null],
+  ["Zapatos", "Deportivos amarillos", "deportivos-amarillos.svg", false, null],
+  ["Zapatos", "Deportivos rojos", "deportivos-rojos.svg", false, null],
+  ["Zapatos", "Deportivos verde", "deportivos-verde.svg", false, null],
+  ["Zapatos", "Zapatos amarillos", "zapatos-amarillos.svg", false, null],
+  ["Zapatos", "Zapatos azules", "zapatos-azules.svg", false, null],
+  ["Zapatos", "Zapatos lila", "zapatos-lila.svg", false, null],
+  ["Zapatos", "Zapatos rojos", "zapatos-rojos.svg", true, null],
+  ["Zapatos", "Zapatos rosa", "zapatos-rosa.svg", false, null],
+  ["Boca", "Boca 1", "boca-1.svg", true, [45.0, 31, 10.1]],
+  ["Boca", "Boca 2", "boca-2.svg", false, [44.7, 31, 10.7]],
+  ["Boca", "Boca 3", "boca-3.svg", false, [44.5, 31, 11.0]],
+  ["Boca", "Boca 4", "boca-4.svg", false, [44.5, 31, 10.9]],
+  ["Boca", "Boca 5", "boca-5.svg", false, [44.0, 31, 12.0]],
+  ["Ojos", "Ojos azules", "ojos-azules.svg", false, null],
+  ["Ojos", "Ojos dorados", "ojos-dorados.svg", false, null],
+  ["Ojos", "Ojos grises", "ojos-grises.svg", false, null],
+  ["Ojos", "Ojos marrones", "ojos-marrones.svg", true, null],
+  ["Ojos", "Ojos miel", "ojos-miel.svg", false, null],
+  ["Ojos", "Ojos verde", "ojos-verde.svg", false, null],
+  ["Cejas", "Cejas 1", "cejas-1.svg", false, null],
+  ["Cejas", "Cejas 2", "cejas-2.svg", true, null],
+  ["Cejas", "Cejas 3", "cejas-3.svg", false, null],
+  ["Cejas", "Cejas 4", "cejas-4.svg", false, null],
+  ["Cejas", "Cejas 5", "cejas-5.svg", false, null],
+  ["Cejas", "Cejas 6", "cejas-6.svg", false, null],
+  ["Cejas", "Cejas 7", "cejas-7.svg", false, null],
+  ["Cabello", "Cabello 1", "cabello-1.svg", true, [25.1, 5, 49.9]],
+  ["Cabello", "Cabello 2", "cabello-2.svg", false, [21.5, 2, 57.1]],
+  ["Cabello", "Cabello 3", "cabello-3.svg", false, [19.7, 5, 60.7]],
+  ["Cabello", "Cabello 4", "cabello-4.svg", false, [21.7, 5, 56.6]],
+  ["Cabello", "Cabello 5", "cabello-5.svg", false, [21.2, 5, 57.6]],
+  ["Cabello", "Cabello 6", "cabello-6.svg", false, [20.9, 0.5, 58.1]],
+  ["Cabello", "Cabello 7", "cabello-7.svg", false, [26.3, 5, 47.3]],
+  ["Cabello", "Cabello 8", "cabello-8.svg", false, [26.6, 5, 46.9]],
+  ["Cabello", "Cabello 9", "cabello-9.svg", false, [20.5, 5, 59.0]],
+  ["Cabello", "Cabello 11", "cabello-11.svg", false, [22.5, 5, 55.0]],
+  ["Cabello", "Cabello 12", "cabello-12.svg", false, [24.6, 5, 50.9]],
+  ["Cabello", "Cabello 13", "cabello-13.svg", false, [23.1, 5, 53.8]],
+  ["Cabello", "Cabello 14", "cabello-14.svg", false, [26.1, 5, 47.8]],
+  ["Cabello", "Cabello 15", "cabello-15.svg", false, [25.8, 5, 48.4]],
+  ["Cabello", "Cabello 16", "cabello-16.svg", false, [24.1, 5, 51.9]],
+  ["Cabello", "Cabello 17", "cabello-17.svg", false, [25.9, 5, 48.3]],
+  ["Cabello", "Cabello 18", "cabello-18.svg", false, [26.2, 5, 47.7]],
+  ["Cabello", "Cabello 19", "cabello-19.svg", false, [23.0, 5, 53.9]],
+  ["Accesorios", "Lazo amarillo", "lazo-amarillo.svg", false, [52.6, 4.3, 18.7]],
+  ["Accesorios", "Lazo lila", "lazo-lila.svg", false, [53.5, 4.7, 17.1]],
+  ["Accesorios", "Lazo rosa", "lazo-rosa.svg", false, [52.1, 3.3, 19.7]],
+  ["Accesorios", "Lazos mente", "lazos-mente.svg", false, [53.0, 3.6, 17.9]],
+  ["Accesorios", "Lazos rojos", "lazos-rojos.svg", false, [52.8, 3.8, 18.4]],
+  ["Accesorios", "Lentes 1", "lentes-1.svg", false, [33.1, 18.2, 33.7]],
+  ["Accesorios", "Lentes 2", "lentes-2.svg", false, [33.9, 18.1, 32.1]],
+  ["Accesorios", "Lentes 3", "lentes-3.svg", false, [35.1, 18.1, 29.7]],
+  ["Accesorios", "Lentes 4", "lentes-4.svg", false, [32.9, 18.3, 34.1]],
+  ["Accesorios", "Lentes 5", "lentes-5.svg", false, [33.2, 18.2, 33.5]],
+  ["Accesorios", "Lentes 6", "lentes-6.svg", false, [32.4, 18.3, 35.1]],
+  ["Accesorios", "Lentes 7", "lentes-7.svg", false, [34.4, 19.5, 31.1]],
+  ["Accesorios", "Lentes 8", "lentes-8.svg", false, [34.3, 19.2, 31.3]],
+  ["Accesorios", "Lentes 9", "lentes-9.svg", false, [35.5, 19.0, 28.9]],
+  ["Accesorios", "Lentes 10", "lentes-10.svg", false, [33.8, 17.3, 32.3]],
+];
+
 
 export const builderBlock = {
   mode: "creador",
