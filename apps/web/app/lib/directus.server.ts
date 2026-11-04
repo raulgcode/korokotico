@@ -85,11 +85,26 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 const FILE = "id,type,width,height,title,description";
 
 export function getSettings() {
-  return cached("settings", () =>
-    directus<SiteSettings>("/items/site_settings", {
+  return cached("settings", async () => {
+    const settings = await directus<SiteSettings & { order_notification_emails?: unknown }>("/items/site_settings", {
       query: { fields: `*,logo.${FILE.replaceAll(",", ",logo.")},symbol.${FILE.replaceAll(",", ",symbol.")},og_image.id,active_theme.*` },
-    }),
-  );
+    });
+    // Los ajustes llegan al navegador: los correos que reciben los pedidos se quedan en el servidor
+    delete settings.order_notification_emails;
+    return settings as SiteSettings;
+  });
+}
+
+/** Correos que reciben el aviso de cada pedido (Ajustes del sitio). Si no hay, el correo de contacto. */
+export async function getOrderRecipients() {
+  const s = await directus<{ order_notification_emails: unknown; contact_email: string | null }>("/items/site_settings", {
+    query: { fields: "order_notification_emails,contact_email" },
+  });
+  const raw = s?.order_notification_emails;
+  const list = Array.isArray(raw) ? raw.map(String) : typeof raw === "string" ? raw.split(/[\s,;]+/) : [];
+  const emails = [...new Set(list.map((e) => e.trim().toLowerCase()).filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)))];
+  if (!emails.length && s?.contact_email) emails.push(s.contact_email.trim());
+  return emails;
 }
 
 export function getMenus() {
@@ -193,7 +208,7 @@ export async function getOrderByToken(token: string) {
   const orders = await directus<Order[]>("/items/orders", {
     query: {
       "filter[token][_eq]": token,
-      fields: `id,code,status,customer_name,email,phone,address,notes,subtotal,shipping,total,date_created,shipping_zone.name,items.${ITEM_FIELDS.replaceAll(",", ",items.")}`,
+      fields: `id,code,status,customer_name,email,phone,delivery_type,address,notes,subtotal,shipping,total,date_created,shipping_zone.name,items.${ITEM_FIELDS.replaceAll(",", ",items.")}`,
       limit: 1,
     },
   });

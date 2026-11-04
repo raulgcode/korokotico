@@ -3,6 +3,7 @@
 #   fly apps create korokotico-cms-prod --org daniela-zarraga
 #   fly volumes create cms_data --app korokotico-cms-prod --region dfw --size 1
 #   fly secrets set --app korokotico-cms-prod SECRET=... ADMIN_EMAIL=... ADMIN_PASSWORD=...
+# Correos (recuperar contraseña) por Resend: fly secrets set --app korokotico-cms-prod EMAIL_SMTP_PASSWORD=re_...
 app = "korokotico-cms-prod"
 primary_region = "dfw"
 
@@ -20,6 +21,15 @@ primary_region = "dfw"
   WEBSOCKETS_ENABLED = "false"
   TELEMETRY = "false"
   FILES_MAX_UPLOAD_SIZE = "20mb"
+  # Correos del panel (recuperar contraseña, invitaciones) por el SMTP de Resend.
+  # La clave va como secreto: EMAIL_SMTP_PASSWORD = la API key de Resend. El dominio debe estar verificado en Resend.
+  # Solo la dirección: Directus le pone el nombre del proyecto (Korokotico)
+  EMAIL_FROM = "no-responder@korokotico.com"
+  EMAIL_TRANSPORT = "smtp"
+  EMAIL_SMTP_HOST = "smtp.resend.com"
+  EMAIL_SMTP_PORT = "465"
+  EMAIL_SMTP_SECURE = "true"
+  EMAIL_SMTP_USER = "resend"
 
 [mounts]
   source = "cms_data"

@@ -8,7 +8,7 @@
 //       Agrega --demo-parts para subir piezas de prueba al creador de muñecos (solo desarrollo).
 
 import { readFile } from "node:fs/promises";
-import { COLLECTIONS, RELATIONS, FILE_RELATIONS, PUBLIC_READ } from "./schema.mjs";
+import { COLLECTIONS, RELATIONS, FILE_RELATIONS, PUBLIC_READ, WEBSITE_ONLY_READ } from "./schema.mjs";
 import * as content from "./content.mjs";
 import { collectionSvgs } from "./assets.mjs";
 import { DEFAULT_THEMES } from "./themes.mjs";
@@ -141,7 +141,16 @@ async function ensurePermissions() {
   const readRules = (policy) => PUBLIC_READ.map((collection) => ensurePermission(policy, collection, "read"));
 
   log("Permisos públicos");
-  await Promise.all(readRules(publicPolicy.id));
+  await Promise.all(PUBLIC_READ.map((collection) => ensurePermission(publicPolicy.id, collection, "read")));
+  // Ajustes del sitio guarda los correos que reciben los pedidos: ya no se lee sin sesión (la web usa su token).
+  // Directus sin licencia no permite ocultar un solo campo, así que se quita la lectura pública de la colección.
+  for (const collection of WEBSITE_ONLY_READ) {
+    const found = await api("GET", `/permissions?filter[policy][_eq]=${publicPolicy.id}&filter[collection][_eq]=${collection}&fields=id`);
+    if (found.length) {
+      log("Quitando lectura pública de", collection);
+      await api("DELETE", `/permissions/${found[0].id}`);
+    }
+  }
 
   // Política y usuario para la web (guarda solicitudes)
   let website = policies.find((p) => p.name === "Sitio web");
@@ -157,6 +166,7 @@ async function ensurePermissions() {
   log("Permisos del usuario Sitio web");
   await Promise.all([
     ...readRules(website.id),
+    ...WEBSITE_ONLY_READ.map((collection) => ensurePermission(website.id, collection, "read")),
     ...["orders", "request_items", "request_items_files"].flatMap((c) =>
       ["create", "read", "update"].map((a) => ensurePermission(website.id, c, a)),
     ),

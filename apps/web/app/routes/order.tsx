@@ -1,4 +1,4 @@
-import { CheckCircle2Icon, CopyIcon } from "lucide-react";
+import { CheckCircle2Icon, CopyIcon, ScissorsIcon, SparklesIcon } from "lucide-react";
 import { useState } from "react";
 import { data } from "react-router";
 import type { Route } from "./+types/order";
@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getOrderByToken } from "~/lib/directus.server";
 import { rootData, seo } from "~/lib/seo";
 import { assetUrl } from "~/lib/assets";
+import { deliveryLabel } from "~/lib/delivery";
 import { formatPrice } from "~/lib/utils";
 
 const STATUS: Record<string, string> = {
@@ -57,6 +58,10 @@ export default function OrderPage({ loaderData }: Route.ComponentProps) {
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Badge variant="outline" className="border-2 px-4 py-1.5 font-display text-base">{order.code}</Badge>
           <Badge variant="accent" className="px-4 py-1.5 text-sm">{STATUS[order.status] ?? order.status}</Badge>
+          <Badge variant="outline" className="gap-1.5 border-2 px-4 py-1.5 text-sm">
+            {order.delivery_type === "materiales" ? <ScissorsIcon /> : <SparklesIcon />}
+            {deliveryLabel(order.delivery_type)}
+          </Badge>
         </div>
         <Button
           variant="link"

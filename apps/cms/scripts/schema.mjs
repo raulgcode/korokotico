@@ -326,6 +326,12 @@ export const BLOCKS = [
   },
 ];
 
+// Cómo quiere el cliente su pedido (la web lo pide en el carrito)
+export const DELIVERY_TYPES = [
+  ["listo", "Listo para jugar (lo cosemos nosotros)"],
+  ["materiales", "Materiales para coser en casa"],
+];
+
 // Directus sin licencia admite 25 colecciones (sin contar carpetas): hoy se usan todas.
 
 export const BLOCK_COLLECTIONS = BLOCKS.map((b) => b.collection);
@@ -408,6 +414,12 @@ export const COLLECTIONS = [
       f.divider("contact_divider", "Contacto"),
       f.string("whatsapp_number", "Número de WhatsApp", { ...half, note: "Con código de país, solo números. Ej: 50688887777" }),
       f.string("contact_email", "Correo de contacto", half),
+      base("order_notification_emails", "json", "Correos que reciben los pedidos", {
+        interface: "tags",
+        special: ["cast-json"],
+        options: { placeholder: "Escribe un correo y presiona Enter", alphabetize: false },
+        note: "Cada vez que alguien envía una solicitud desde la web, le llega un correo a cada una de estas direcciones. Si está vacío se usa el correo de contacto.",
+      }),
       f.string("instagram_url", "Instagram", half),
       f.string("facebook_url", "Facebook", half),
       f.divider("seo_divider", "SEO por defecto"),
@@ -609,6 +621,7 @@ export const COLLECTIONS = [
       f.string("email", "Correo", half),
       f.string("phone", "WhatsApp / teléfono", half),
       f.m2o("shipping_zone", "Zona de envío", "{{name}}", half),
+      f.select("delivery_type", "¿Cómo lo quiere recibir?", DELIVERY_TYPES, "listo", half),
       f.text("address", "Dirección de envío"),
       f.text("notes", "Notas del cliente"),
       f.integer("subtotal", "Subtotal (₡)", { ...half, readonly: true }),
@@ -690,7 +703,6 @@ export const FILE_RELATIONS = COLLECTIONS.flatMap((c) =>
 
 // Lectura pública (lo que la web muestra sin iniciar sesión)
 export const PUBLIC_READ = [
-  "site_settings",
   "themes",
   "menus",
   "menu_items",
@@ -704,3 +716,7 @@ export const PUBLIC_READ = [
   "doll_part_types",
   "doll_parts",
 ];
+
+// Solo las lee el usuario «Sitio web» (con su token), nunca sin sesión:
+// Ajustes del sitio guarda los correos que reciben los pedidos.
+export const WEBSITE_ONLY_READ = ["site_settings"];

@@ -222,6 +222,8 @@ export type RequestItem = {
   parts_price: number | null;
 };
 
+export type DeliveryType = "listo" | "materiales";
+
 export type Order = {
   id: number;
   code: string;
@@ -230,6 +232,7 @@ export type Order = {
   customer_name: string;
   email: string;
   phone: string;
+  delivery_type: DeliveryType | null;
   address: string | null;
   notes: string | null;
   subtotal: number;

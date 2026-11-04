@@ -1,5 +1,7 @@
 import { data, redirect } from "react-router";
-import { directus, getDesignsFolder, getDollParts, getReferencesFolder, getShop, uploadFile } from "./directus.server";
+import { directus, getDesignsFolder, getDollParts, getOrderByToken, getReferencesFolder, getShop, uploadFile } from "./directus.server";
+import { DELIVERY_OPTIONS } from "./delivery";
+import { notifyNewOrder } from "./email.server";
 import { getCart, sessionStorage } from "./session.server";
 import type { DesignPart, Shop, ShippingZone } from "./types";
 
@@ -165,7 +167,7 @@ export async function removeFromCart(request: Request, id: number) {
   return data({ ok: true }, { headers: { "Set-Cookie": await sessionStorage.commitSession(session) } });
 }
 
-export type CheckoutErrors = Partial<Record<"customer_name" | "email" | "phone" | "shipping_zone" | "address" | "form", string>>;
+export type CheckoutErrors = Partial<Record<"customer_name" | "email" | "phone" | "delivery_type" | "shipping_zone" | "address" | "form", string>>;
 
 function orderCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -184,12 +186,14 @@ export async function checkout(request: Request, form: FormData, zones: Shipping
     notes: text(form, "notes", 1000),
   };
   const zone = zones.find((z) => z.id === Number(form.get("shipping_zone")));
+  const delivery = DELIVERY_OPTIONS.find((o) => o.value === form.get("delivery_type"));
 
   const errors: CheckoutErrors = {};
   if (!items.length) errors.form = "Tu carrito está vacío.";
   if (!values.customer_name) errors.customer_name = "Escribe tu nombre.";
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = "Escribe un correo válido.";
   if (values.phone.replace(/\D/g, "").length < 8) errors.phone = "Escribe un número de WhatsApp válido.";
+  if (!delivery) errors.delivery_type = "Elige cómo quieres recibir tu pedido.";
   if (!zone) errors.shipping_zone = "Elige la zona de envío.";
   if (!values.address) errors.address = "Escribe la dirección de envío.";
   if (Object.keys(errors).length) return data({ errors }, { status: 400 });
@@ -208,6 +212,7 @@ export async function checkout(request: Request, form: FormData, zones: Shipping
       code: orderCode(),
       token,
       status: "nueva",
+      delivery_type: delivery!.value,
       shipping_zone: zone!.id,
       subtotal,
       shipping: zone!.price,
@@ -215,6 +220,10 @@ export async function checkout(request: Request, form: FormData, zones: Shipping
       items: cartItems.map((i) => ({ id: i.id, status: "solicitado" })),
     },
   });
+
+  // Aviso por correo a los administradores (si falla, la solicitud igual queda guardada)
+  const order = await getOrderByToken(token).catch(() => null);
+  if (order) await notifyNewOrder(order);
 
   session.set("items", []);
   return redirect(`/pedido/${token}`, { headers: { "Set-Cookie": await sessionStorage.commitSession(session) } });

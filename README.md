@@ -19,7 +19,9 @@ apps/
 - **Temas**: colores y tipografías del sitio; puedes crear temas propios basados en los existentes.
 - **Colecciones**: se publican en `/colecciones/<slug>` con su propio formulario.
 - **Paquetes, complementos y zonas de envío**: precios del formulario y del carrito.
-- **Solicitudes**: lo que envían los clientes desde el carrito, con sus personajes y referencias (privadas).
+- **Solicitudes**: lo que envían los clientes desde el carrito, con sus personajes y referencias (privadas), y cómo lo
+  quieren recibir: **listo para jugar** o **materiales para coser en casa**.
+- **Correos que reciben los pedidos** (`Ajustes del sitio`): a cada dirección le llega un aviso por cada solicitud nueva.
 - **Creador de muñecos**: tipos de pieza (cuerpo, ojos, boca, cejas, cabello, ropa, zapatos, accesorios) y sus piezas.
   Ver «Creador de muñecos» más abajo.
 
@@ -82,6 +84,30 @@ Migración en local: `pnpm cms:migrate` (o `pnpm cms:migrate:demo` para subir pi
 sola dentro de `pnpm release`.
 
 Directus sin licencia admite 25 colecciones (sin contar carpetas) y hoy se usan las 25.
+
+## Correos (Resend)
+
+Los correos salen por [Resend](https://resend.com) con una sola API key para las dos apps:
+
+- **Aviso de pedidos** (web): cada solicitud nueva manda un correo a las direcciones de **Ajustes del sitio → Correos que
+  reciben los pedidos** (si está vacío, al correo de contacto). Trae los datos del cliente, cómo quiere recibirlo, los
+  personajes, el total y un botón para abrir la solicitud en el CMS. Responder el correo le escribe al cliente.
+  Remitente: `ORDER_EMAIL_FROM` en `apps/web/fly.toml`. Si falta `RESEND_API_KEY` o falla el envío, la solicitud
+  igual se guarda y el error queda en los logs (`fly logs -a korokotico-web-prod`).
+- **Recuperar contraseña del CMS** (Directus): usa el SMTP de Resend (`EMAIL_*` en `apps/cms/fly.toml`).
+
+Una sola vez:
+
+1. En Resend, agrega y verifica el dominio `korokotico.com` (los registros DNS van en Cloudflare).
+2. Crea una API key con permiso de envío y guárdala en las dos apps:
+
+```bash
+fly secrets set --app korokotico-web-prod RESEND_API_KEY=re_...
+fly secrets set --app korokotico-cms-prod EMAIL_SMTP_PASSWORD=re_...
+```
+
+`pnpm release` avisa si falta alguno de los dos secretos. Ajustes del sitio ya no se lee sin sesión (guarda esos correos);
+la web lo lee con su token.
 
 ## SEO
 

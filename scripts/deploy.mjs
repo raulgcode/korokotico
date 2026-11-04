@@ -84,6 +84,22 @@ const webApp = readToml("apps/web/fly.toml", "app");
 const webUrl = readToml("apps/web/fly.toml", "SITE_URL").replace(/\/$/, "");
 const creds = doSeed ? readEnvFly() : null;
 
+/** Avisa (sin detener el despliegue) si falta la clave de Resend en una app de Fly */
+function checkSecret(app, name, purpose) {
+  const res = spawnSync("fly", ["secrets", "list", "--app", app, "--json"], { encoding: "utf8", shell: process.platform === "win32" });
+  if (res.status !== 0) return;
+  try {
+    if (!JSON.parse(res.stdout).some((s) => (s.Name ?? s.name) === name)) {
+      console.warn(`  ⚠ ${app} no tiene el secreto ${name}: ${purpose} no se enviarán.`);
+      console.warn(`    fly secrets set --app ${app} ${name}=re_...   (API key de Resend)`);
+    }
+  } catch {}
+}
+
+log("Comprobando la clave de Resend");
+if (doCms) checkSecret(cmsApp, "EMAIL_SMTP_PASSWORD", "los correos para recuperar la contraseña del CMS");
+if (doWeb) checkSecret(webApp, "RESEND_API_KEY", "los avisos de pedidos nuevos");
+
 if (doCms) {
   log(`Desplegando el CMS (${cmsApp})`);
   run("fly", ["deploy", "--remote-only", "--ha=false"], { cwd: join(ROOT, "apps/cms") });

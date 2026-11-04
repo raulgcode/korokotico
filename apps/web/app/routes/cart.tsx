@@ -16,6 +16,7 @@ import { checkout, removeFromCart, type CheckoutErrors } from "~/lib/orders.serv
 import { rootData, seo } from "~/lib/seo";
 import { getCart } from "~/lib/session.server";
 import { assetUrl } from "~/lib/assets";
+import { DELIVERY_OPTIONS } from "~/lib/delivery";
 import { cn, formatPrice } from "~/lib/utils";
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -58,6 +59,7 @@ export default function Cart({ loaderData, actionData }: Route.ComponentProps) {
   const { items, zones, added } = loaderData;
   const errors = ((actionData as { errors?: CheckoutErrors } | undefined)?.errors ?? {}) as CheckoutErrors;
   const [zoneId, setZoneId] = useState("");
+  const [delivery, setDelivery] = useState<string>(DELIVERY_OPTIONS[0].value);
   const navigation = useNavigation();
   const submitting = navigation.state === "submitting" && navigation.formData?.get("intent") === "checkout";
 
@@ -152,6 +154,25 @@ export default function Cart({ loaderData, actionData }: Route.ComponentProps) {
                       {errors[name] && <p className="text-sm font-semibold text-destructive">{errors[name]}</p>}
                     </div>
                   ))}
+                  <fieldset className="space-y-2">
+                    <legend className="mb-2 text-sm font-bold">¿Cómo lo quieres recibir?</legend>
+                    <RadioGroup name="delivery_type" value={delivery} onValueChange={setDelivery} required>
+                      {DELIVERY_OPTIONS.map((o) => (
+                        <Label
+                          key={o.value}
+                          htmlFor={`delivery-${o.value}`}
+                          className={cn("flex cursor-pointer items-start gap-3 rounded-xl border-2 bg-card px-4 py-3", delivery === o.value && "border-primary")}
+                        >
+                          <RadioGroupItem id={`delivery-${o.value}`} value={o.value} className="mt-0.5" />
+                          <span className="flex-1 space-y-0.5">
+                            <span className="block">{o.label}</span>
+                            <span className="block text-xs font-normal text-muted-foreground">{o.description}</span>
+                          </span>
+                        </Label>
+                      ))}
+                    </RadioGroup>
+                    {errors.delivery_type && <p className="text-sm font-semibold text-destructive">{errors.delivery_type}</p>}
+                  </fieldset>
                   <fieldset className="space-y-2">
                     <legend className="mb-2 text-sm font-bold">Zona de envío</legend>
                     <RadioGroup name="shipping_zone" value={zoneId} onValueChange={setZoneId} required>

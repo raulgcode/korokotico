@@ -2,6 +2,7 @@
 # Primer despliegue (una sola vez):
 #   fly apps create korokotico-web-prod --org daniela-zarraga
 #   fly secrets set --app korokotico-web-prod DIRECTUS_TOKEN=... SESSION_SECRET=...
+# Aviso de pedidos por Resend: fly secrets set --app korokotico-web-prod RESEND_API_KEY=re_...
 app = "korokotico-web-prod"
 primary_region = "dfw"
 
@@ -12,6 +13,8 @@ primary_region = "dfw"
   DIRECTUS_URL = "https://admin.korokotico.com"
   SITE_URL = "https://korokotico.com"
   PORT = "3000"
+  # Remitente de los avisos de pedidos (el dominio debe estar verificado en Resend)
+  ORDER_EMAIL_FROM = "Korokotico <pedidos@korokotico.com>"
 
 [http_service]
   internal_port = 3000
