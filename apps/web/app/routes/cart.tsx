@@ -48,8 +48,8 @@ function RemoveButton({ id }: { id: number }) {
     <fetcher.Form method="post">
       <input type="hidden" name="intent" value="remove" />
       <input type="hidden" name="id" value={id} />
-      <Button type="submit" variant="ghost" size="sm" disabled={fetcher.state !== "idle"} className="text-muted-foreground hover:text-destructive">
-        <Trash2Icon /> Quitar
+      <Button type="submit" variant="ghost" size="sm" loading={fetcher.state !== "idle"} className="text-muted-foreground hover:text-destructive">
+        {fetcher.state === "idle" && <Trash2Icon />} {fetcher.state === "idle" ? "Quitar" : "Quitando…"}
       </Button>
     </fetcher.Form>
   );
@@ -61,7 +61,7 @@ export default function Cart({ loaderData, actionData }: Route.ComponentProps) {
   const [zoneId, setZoneId] = useState("");
   const [delivery, setDelivery] = useState<string>(DELIVERY_OPTIONS[0].value);
   const navigation = useNavigation();
-  const submitting = navigation.state === "submitting" && navigation.formData?.get("intent") === "checkout";
+  const submitting = navigation.state !== "idle" && navigation.formData?.get("intent") === "checkout";
 
   const subtotal = items.reduce((s, i) => s + (i.subtotal ?? 0), 0);
   const zone = zones.find((z) => String(z.id) === zoneId);
@@ -215,7 +215,7 @@ export default function Cart({ loaderData, actionData }: Route.ComponentProps) {
                       <dd className="font-display text-2xl font-semibold text-primary">{formatPrice(subtotal + (zone?.price ?? 0))}</dd>
                     </div>
                   </dl>
-                  <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+                  <Button type="submit" size="lg" className="w-full" loading={submitting}>
                     {submitting ? "Enviando…" : "Enviar mi solicitud"}
                   </Button>
                 </Form>

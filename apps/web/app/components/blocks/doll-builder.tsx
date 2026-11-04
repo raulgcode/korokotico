@@ -526,7 +526,7 @@ export function DollBuilder({ block, types, shop }: Props) {
               <PriceSummary pkgName={pkg?.name} base={(pkg?.price ?? 0) + addonsPrice} partsPrice={partsPrice} units={units} />
               {block.summary_note && <p className="text-xs leading-relaxed text-muted-foreground">{block.summary_note}</p>}
               <FieldError id="design-error" message={errors.design} />
-              <Button type="submit" size="lg" className="w-full" disabled={composing || submitting}>
+              <Button type="submit" size="lg" className="w-full" disabled={submitting} loading={composing}>
                 {composing ? "Preparando tu diseño…" : "Revisar mi diseño"}
                 {!composing && <ArrowRightIcon />}
               </Button>
@@ -575,7 +575,7 @@ export function DollBuilder({ block, types, shop }: Props) {
               <Button type="button" variant="outline" size="lg" disabled={submitting} onClick={() => setReview(null)}>
                 <ArrowLeftIcon /> Volver a editar
               </Button>
-              <Button type="button" size="lg" disabled={submitting} onClick={confirm}>
+              <Button type="button" size="lg" loading={submitting} onClick={confirm}>
                 {submitting ? "Guardando…" : block.submit_label || "Confirmar y agregar al carrito"}
                 {!submitting && <ArrowRightIcon />}
               </Button>

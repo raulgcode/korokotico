@@ -54,8 +54,8 @@ export default function Account({ actionData }: Route.ComponentProps) {
                 <Input id="email" name="email" type="email" autoComplete="email" required />
               </div>
               {actionData?.error && <p className="text-sm font-semibold text-destructive">{actionData.error}</p>}
-              <Button type="submit" size="lg" className="w-full" disabled={navigation.state !== "idle"}>
-                <SearchIcon /> Consultar mi solicitud
+              <Button type="submit" size="lg" className="w-full" loading={navigation.state !== "idle"}>
+                {navigation.state === "idle" ? <><SearchIcon /> Consultar mi solicitud</> : "Consultando…"}
               </Button>
             </Form>
           </CardContent>

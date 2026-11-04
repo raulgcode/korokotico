@@ -48,7 +48,7 @@ export function CreateForm({ block, collections, shop, defaultCollection, forceH
   const actionData = useActionData() as { errors?: CreateErrors } | undefined;
   const errors = actionData?.errors ?? {};
   const navigation = useNavigation();
-  const submitting = navigation.state === "submitting" && navigation.formMethod === "POST";
+  const submitting = navigation.state !== "idle" && navigation.formMethod === "POST";
 
   const [collectionId, setCollectionId] = useState(String(defaultCollection ?? collections[0]?.id ?? ""));
   const [packageId, setPackageId] = useState(String(shop.packages[0]?.id ?? ""));
@@ -220,7 +220,7 @@ export function CreateForm({ block, collections, shop, defaultCollection, forceH
 
               {block.summary_note && <p className="text-xs leading-relaxed text-muted-foreground">{block.summary_note}</p>}
 
-              <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              <Button type="submit" size="lg" className="w-full" loading={submitting}>
                 {submitting ? "Guardando…" : block.submit_label || "Agregar al carrito"}
                 {!submitting && <ArrowRightIcon />}
               </Button>
