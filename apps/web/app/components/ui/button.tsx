@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Slot } from "radix-ui";
 import { cva, type VariantProps } from "class-variance-authority";
+import { LoaderCircleIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 
@@ -32,10 +33,35 @@ function Button({
   variant,
   size,
   asChild = false,
+  loading = false,
+  disabled,
+  children,
   ...props
-}: React.ComponentProps<"button"> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot.Root : "button";
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />;
+}: React.ComponentProps<"button"> &
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+    /** Muestra un indicador girando y desactiva el botón mientras espera al servidor */
+    loading?: boolean;
+  }) {
+  if (asChild) {
+    return (
+      <Slot.Root data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props}>
+        {children}
+      </Slot.Root>
+    );
+  }
+  return (
+    <button
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }), loading && "cursor-wait")}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      {...props}
+    >
+      {loading && <LoaderCircleIcon className="animate-spin" aria-hidden />}
+      {children}
+    </button>
+  );
 }
 
 export { Button, buttonVariants };

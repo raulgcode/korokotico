@@ -11,6 +11,7 @@ import { ArrowRightIcon } from "lucide-react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
+import { NavigationProgress } from "~/components/navigation-progress";
 import { SiteFooter } from "~/components/site-footer";
 import { SiteHeader } from "~/components/site-header";
 import { Button } from "~/components/ui/button";
@@ -50,6 +51,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="flex min-h-dvh flex-col">
+        <NavigationProgress />
         {children}
         <ScrollRestoration />
         <Scripts />
